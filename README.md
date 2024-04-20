@@ -1,4 +1,4 @@
-# ADS
+# ICO
 
 O website está disponibilizado em https://gbotelho7.github.io/ADS/
 
