@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <title>Gestor de Horários</title>
+
+  <link rel="stylesheet" type="text/css" href="styles.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.0.5/css/tabulator.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.0.5/js/tabulator.min.js"></script>
+  <script src="https://unpkg.com/mathjs@12.0.0/lib/browser/math.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+  <script src="https://cdn.fusioncharts.com/fusioncharts/latest/fusioncharts.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chord-js@1.0.7/dist/chord-diagram.min.js"></script>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <script src="functions.js"></script>
+  <meta charset="UTF-8">
+  
+
+</head>
+<body>
+  
+  <script>
+    const storedData = localStorage.getItem('executionData'); //Dados o ficheiro de configuração
+    console.log(storedData)
+    const parsedData = storedData ? JSON.parse(storedData) : {}; //Transformar a info em JSON 
+    window.defaultHeadersArray = "Curso;Unidade de execução;Turno;Turma;Inscritos no turno;Dia da Semana;Início;Fim;Dia;Características da sala pedida para a aula;Sala da aula;Lotação;Características reais da sala".split(";");
+
+    window.dictionary =  parsedData.dictionary || {"Curso":"Curso","Unidade de execução":"Unidade de execução","Turno":"Turno","Turma":"Turma","Inscritos no turno":"Inscritos no turno","Dia da Semana":"Dia da Semana","Início":"Início","Fim":"Fim","Dia":"Dia","Características da sala pedida para a aula":"Características da sala pedida para a aula","Sala da aula":"Sala da aula","Lotação":"Lotação","Características reais da sala":"Características reais da sala"};
+    window.csvSeparator = parsedData.csvSeparator || ';';
+    window.hourFormat = parsedData.hourFormat || "HH:mm:ss";
+    window.dateFormat = parsedData.dateFormat || "DD/MM/YYYY";
+    window.dateColumns = parsedData.dateColumns || 'Dia'
+    window.hourColumns = parsedData.hourColumns || 'Início;Fim' 
+    window.classRoomDictionary = {}; // Guarda o dicionario que relaciona as salas com as suas caracteristiscas
+    window.schedulesData = [] // Guarda toda a estrutura e dados dos horarios
+    window.table;
+    window.modifiableTable;
+    window.dynamicCriteriumsLists = parsedData.dynamicCriteriumsLists || { formulaList: [], textList: [] }; //TODO Definir Objeto com duas listas
+  </script>
+    <div class="header-container">
+      <div class="title">
+        <h1>Gestão de Horários</h1>
+        <br>
+        <h2> Análise e comparação</h2>
+        <br>
+      </div>
+      <img src="logo iscte.png" alt="logo-iscte">
+      <br>
+      <br>
+      <h3> Esta ferramenta permite a análise e a comparação de horários escolares, com o intuito de perceber qual destes é o mais indicado, através da avaliação de diferentes métricas.</h3>
+      <br>
+      <br>
+    </div>
+    <br>
+    <br>
+    <button id="show-form-button">Alterar Configurações de Leitura dos Ficheiros</button> 
+    <button class="primary" onclick="window.dialog.showModal();">?</button>
+
+    <dialog id="dialog">
+      <h3>Alterar Configurações de Leitura dos Ficheiros</h3>
+      <p>Para a realização da avaliação é necessário carregar dois tipos de ficheiros diferentes:</p>
+      
+      <ul>
+          <li><strong>Ficheiro de caraterização de salas:</strong> Ficheiro csv que contém a caraterização de todas as salas existentes, para que possa ser feita uma correspondência entre estas e os horários.</li>
+          <p>Exemplo: para verificar se uma sala contém os requisitos necessários para uma dada aula, é necessário verificar no ficheiro de caraterização de salas se a sala em questão possui essas caraterísticas.</p>
+          
+          <li><strong>Ficheiros de horários:</strong> Ficheiros csv que contêm as aulas todas de um determinado espaço temporal. É possível efetuar o carregamento de um ou mais ficheiros.</li>
+      </ul>
+      
+      <p>Para se proceder à leitura dos ficheiros, comece por verificar se as configurações de leitura de ambos os tipos de ficheiros correspondem às suas. Por exemplo, se no lugar do cabeçalho “Unidade de execução” os seus ficheiros de horário contiverem a designação “Unidade Curricular”, faça essa correspondência no local indicado. Por defeito, dentro das caixas de texto disponíveis, surgem as configurações já aplicadas.</p>
+      <button onclick="window.dialog.close();" aria-label="close" class="x">❌</button>
+    </dialog>
+      
+      <form id="hidden-form" style="display: none;">
+        <h3>Estas são as definições atuais, pretende alterar alguma?</h3>
+
+        <label for="delimiter">Delimitador:</label>
+        <input type="text" id="delimiter" name="delimiter" ><br>
+
+        <label for="hformat">Formato hora:</label>
+        <input type="text" id="hformat" name="hformat"><br>
+
+        <label for="dformat">Formato data:</label>
+        <input type="text" id="dformat" name="dformat"><br>
+
+        <div id="headers">
+          <br>
+          <strong style="color: #365486;">Faça a correspondência entre os seus cabeçalhos e os nossos:</strong>
+          <br><br>
+          Curso: <input type="text" id="header-curso">
+          <br>
+          Unidade de execução: <input type="text" id="header-unidade">
+          <br>
+          Turno: <input type="text" id="header-turno">
+          <br>
+          Turma: <input type="text" id="header-turma">
+          <br>
+          Inscritos no turno: <input type="text" id="header-inscritos">
+          <br>
+          Dia da Semana: <input type="text" id="header-dia-semana">
+          <br>
+          Início: <input type="text" id="header-inicio">
+          <br>
+          Fim: <input type="text" id="header-fim">
+          <br>
+          Dia: <input type="text" id="header-dia">
+          <br>
+          Características da sala pedida para a aula: <input type="text" id="header-caracteristicas-pedidas">
+          <br>
+          Sala da aula: <input type="text" id="header-sala">
+          <br>
+          Lotação: <input type="text" id="header-lotacao">
+          <br>
+          Características reais da sala: <input type="text" id="header-caracteristicas-reais">
+          <br><br>
+        </div>
+
+        <label for="headerh">Cabeçalhos Horas:</label>
+        <input type="text" id="headerh" name="headerh"><br>
+
+        <label for="headerd">Cabeçalhos Datas:</label>
+        <input type="text" id="headerd" name="headerd"><br>
+        <br><br>
+        <input type="submit" value="Submeter">
+      </form>
+    <h3>Ficheiro de caraterização de Salas</h3>
+    <input type="file" id="csvClassroomFileInput">
+    <br>
+    <br>
+    
+    <br>
+    <div style="display: none" id="after-classrooms">
+      
+      <br>
+      <h3>Ficheiros de Horários</h3>
+      
+      
+      Submeter Ficheiros Locais
+      <label class="switch">
+        <input type="checkbox" id="toggleSwitch1">
+        <span class="slider"></span>
+      </label>
+      Submeter Ficheiros Remotos
+
+      <button class="primary" onclick="window.dialog_Ficheiro_Horarios.showModal();">?</button>
+
+
+      <dialog id="dialog_Ficheiro_Horarios">
+        <h3>Submissão de Ficheiros de Horários</h3>
+        <p>Para poder realizar a avaliação dos seus ficheiros de horários deve proceder à sua submissão em formato csv, configurados de acordo com o estabelecido em “Alterar Configurações de Leitura dos Ficheiros”.</p>
+
+        <p>Para fazer a submissão dos ficheiros, pode fazê-lo exclusivamente através de um dos seguintes modos de inserção (para cada modo de inserção, pode inserir múltiplos ficheiros):</p>
+        
+        <ul>
+            <li><strong>Submissão de ficheiros locais:</strong> Carregamento de ficheiros csv de horários, a partir da sua máquina local.</li>
+            <li><strong>Submissão de ficheiros remotos:</strong> Carregamento de ficheiros csv de horários armazenados remotamente, através de URL.</li>
+        </ul>
+
+        <p>Para selecionar o modo de inserção, coloque o botão de seleção na opção pretendida.</p>
+
+        <button onclick="window.dialog_Ficheiro_Horarios.close();" aria-label="close" class="x">❌</button>
+      </dialog>
+      
+      <br><br>
+      <input type="file" id="csvScheduleFileInput"; multiple>
+      <br><br>
+      <div id="csvScheduleUrlInput" style="display: none;">
+        <div id="urlInputs">
+          <input type="text" class="urlInput" placeholder="Colocar URL">
+        </div>
+        <button id="parseButton">Submeter URL</button>
+      </div>
+
+      <br>
+      
+    </div>
+    <div id="dynamicCriteriums" style="display: none;">
+      <br>
+      <h3> Critérios Dinâmicos</h3>
+      
+      <dialog id="dialog_criterios_dinamicos">
+        <h3>Métricas Pré-definidas:</h3>
+        <ul>
+          <li>Sobrelotações</li>
+          <li>Alunos a mais (sobrelotações)</li>
+          <li>Sobreposições</li>
+          <li>Requisitos não cumpridos</li>
+          <li>Aulas sem sala</li>
+        </ul>
+
+        <p>Se pretender adicionar um ou mais critérios de avaliação, pode fazê-lo de duas formas diferentes:</p>
+
+        <h3>Critérios Dinâmicos com Fórmula:</h3>
+        <p>Introduza o texto na caixa indicada.</p> 
+        <p><strong>Exemplo:</strong> <em>"Lotação" - "Inscritos no turno" > 20</em></p>
+        <h3>Critérios Dinâmicos de Texto:</h3>
+        <p>Selecione o cabeçalho dos horários pretendido e introduza o texto na caixa indicada.</p> 
+        <p><strong>Exemplo:</strong> <em>Cabeçalho -> Curso | Texto introduzido: MEI</em></p>
+        <li>Filtra o curso por MEI</li>
+
+        <p>Para cada critério a adicionar, selecione o tipo de critério, colocando o botão de seleção na opção pretendida.</p>
+
+        <button onclick="window.dialog_criterios_dinamicos.close();" aria-label="close" class="x">❌</button>
+      </dialog>
+
+      Critério Dinâmico em fórmula
+      <label class="switch">
+        <input type="checkbox" id="toggleSwitch2">
+        <span class="slider"></span>
+      </label>
+      Critério Dinâmico de texto  
+
+      <button class="primary" onclick="window.dialog_criterios_dinamicos.showModal();">?</button>
+      <br><br>
+      <div id="criteriumFormulaInputs">
+        Critérios Dinâmicos com Fórmula:
+        <!--<input type="text" id="criteriumFormulaInputValue" placeholder="Enter Criterium">
+        <input type="submit"  id="criteriumFormulaSubmit">-->
+        <input list="formulaOptions" id="criteriumFormulaInputValue" placeholder="Escrever Critério">
+        <datalist id="formulaOptions"></datalist>
+        <button type="button" id="criteriumFormulaSubmit">Submeter</button>
+      </div>
+      <div id="criteriumTextInputs" style="display: none;">
+        Critérios Dinâmicos com Texto:
+        <select name="fields" id="dropdown">
+          <option value="option1">Option 1</option>
+        </select>
+        <!--<input type="text" id="criteriumTextInputValue">
+        <input type="submit"  id="criteriumTextSubmit">-->
+        <input list="textOptions" id="criteriumTextInputValue" placeholder="Escrever Texto">
+        <datalist id="textOptions"></datalist>
+        <button type="button" id="criteriumTextSubmit">Submeter</button>
+      </div>
+    </div>
+    <br>
+    <h4 id="h4-table">Avaliação de critérios  <button class="primary" onclick="window.dialog_avaliacao_criterios.showModal();">?</button></h4> 
+    
+    <dialog id="dialog_avaliacao_criterios">
+      <h3>Avaliação de Critérios</h3>
+      <p>Nesta lista pode observar a contagem das métricas correspondentes a cada critério. 
+        Para além disso, pode selecionar um horário para que sejam apresentadas uma análise mais detalhada e a possibilidade de edição do mesmo. 
+        Para isso, deve selecionar o botão presente na linha do horário pretendido.
+      </p>
+
+      <button onclick="window.dialog_avaliacao_criterios.close();" aria-label="close" class="x">❌</button>
+    </dialog>
+    <div id="chart-container"></div>
+    <br>
+    <h4 id="h4-line-chart" >Avaliação geral de critérios por horário  <button class="primary" onclick="window.dialog_avaliacao_linhas.showModal();">?</button></h4>
+    
+    <dialog id="dialog_avaliacao_linhas">
+      <h3>Avaliação geral de critérios por horário</h3>
+      <p>
+        Neste gráfico pode fazer uma avaliação geral dos critérios para todos os horários selecionados. 
+        Se pretender remover a visualização de um determinado horário, basta selecionar a legenda a ele correspondente. 
+        Para voltar a visualizar, repita a ação.
+      </p>
+
+      <button onclick="window.dialog_avaliacao_linhas.close();" aria-label="close" class="x">❌</button>
+    </dialog>
+    <div id="line-chart-container"></div>
+    <br>
+    <h4 id="h4-heatmap">Contagem de Ocupação de Salas  <button class="primary" onclick="window.dialog_heatmap.showModal();">?</button></h4>
+    <dialog id="dialog_heatmap">
+      <h3>Contagem de Ocupação de Salas</h3>
+      <p>Para poder perceber quanto uma sala é “disputada”, em cada dia da semana, a determinado horário, este gráfico é apresentado.</p>
+      <p>Para selecionar qual o dia da semana que pretende avaliar, selecione o dia correspondente em “Selecionar Dia da Semana”.</p>
+      <p>Para filtrar por níveis de ocupação de salas, utilize os botões apresentados na legenda, criando um intervalo de apresentação. Por exemplo, se o botão esquerdo estiver no nível “Muito Livre” e o botão direito no nível “Ocupado”, apenas serão apresentados os dados correspondentes a esse intervalo de contagens de ocupações. Os níveis de contagem são definidos pelos valores apresentados na legenda.</p>
+      <button onclick="window.dialog_heatmap.close();" aria-label="close" class="x">❌</button>
+    </dialog>
+    <div id="heatmap-filter"></div>
+    <div id="heatmap-container"></div>
+    <br>
+    <h4 id="h4-extra">Análise detalhada de critérios  <button class="primary" onclick="window.dialog_graficos.showModal();">?</button></h4>
+    <dialog id="dialog_graficos">
+      <h3>Análise detalhada de critérios</h3>
+      <br>
+      <h3>Top 10 salas com mais sobrelotações</h3> 
+      <p>Neste gráfico pretende-se mostrar as 10 salas que possuem mais sobrelotações, de entre o lote de salas do horário selecionado para analisar detalhadamente. Os valores apresentados correspondem à contagem de ocorrência de sobrelotações em cada sala.</p>
+      <br>
+      <h3>Análise de atribuição de salas</h3>
+      <p>Neste gráfico pretende-se demonstrar a correção na atribuição de salas a aulas.</p>
+      <ul>
+        <li>Os valores de “Atribuição Incorreta” correspondem à quantidade de ocorrências em que as caraterísticas de sala pedidas para uma aula não foram correspondidas</li>
+        <li>Os valores de “Sala por atribuir” correspondem à quantidade de ocorrências em que uma aula não teve uma sala atribuída</li>
+        <li>Os valores de “Atribuição Correta” correspondem à quantidade de ocorrências em que as caraterísticas de sala pedidas para uma aula foram correspondidas.</li>
+      </ul>  
+      <br>
+      <h3>Análise das caraterísticas não correspondidas</h3>
+      <p>Neste gráfico pretende-se demonstrar quais são as características de salas pedidas para aulas que não são correspondidas. Este permite perceber quais os pontos a melhorar.</p>
+      <p>Por exemplo, se a maior percentagem corresponder a Anfiteatros, significa que existe, provavelmente, uma de duas situações:</p>
+        <ul>
+          <li>Procura superior à oferta neste tipo de salas</li>
+          <li>Atribuição errada de salas</li>
+        </ul>
+      <button onclick="window.dialog_graficos.close();" aria-label="close" class="x">❌</button>
+    </dialog>
+    <div id="extra-charts-container">
+      <div id="extra-graph1"></div>
+      <div id="extra-graph2"></div>
+      <div id="extra-graph3"></div>
+    </div>
+    <br>
+    <h4 id="h4-modifiable">Edição do horário selecionado  <button class="primary" onclick="window.dialog_alteravel.showModal();">?</button></h4>
+    <dialog id="dialog_alteravel">
+      <h3>Edição do horário selecionado</h3>
+      <p>Nesta tabela pretende-se apresentar os dados completos do horário selecionado.</p>
+
+      <p><strong>Nesta estão disponíveis as seguintes funcionalidades:</strong></p>
+
+      <p><strong>Filtragem por cabeçalho:</strong> escrevendo na caixa de texto de cada cabeçalho. Por exemplo, “ME” em Curso</p>
+      <p><strong>Ordenação por cabeçalho</strong></p>
+      <p><strong>Edição direta de valores:</strong> selecionando um dado valor do horário, pode alterá-lo. Para isso, clique sobre o valor e introduza o novo</p>
+      <strong>Verificação de critérios por aula</strong>
+      <ul>
+        <li>As linhas assinaladas com “X” correspondem a aulas que não satisfazem um critério</li>
+        <li>As linhas assinaladas com “✓” correspondem a aulas que satisfazem um critério</li>
+      </ul>
+      
+      <button onclick="window.dialog_alteravel.close();" aria-label="close" class="x">❌</button>
+    </dialog>
+    <div id="modifiable-tabulator"></div>
+    <br>
+    <h4 id="h4-download">Pode fazer o Download do conteúdo da tabela acima nos seguintes formatos</h4>
+    <div id="download-container"></div>
+  
+  <script>
+
+    const showFormButton = document.getElementById("show-form-button");
+    const parseButton = document.getElementById("parseButton");
+    const form = document.getElementById("hidden-form");
+
+    const csvFileInput = document.getElementById("csvScheduleFileInput")
+    const csvUrlInput = document.getElementById("csvScheduleUrlInput")
+    const criteriumFormulaInputs = document.getElementById("criteriumFormulaInputs")
+    const criteriumTextInputs = document.getElementById("criteriumTextInputs")
+
+    const criteriumFormulaInputValue = document.getElementById("criteriumFormulaInputValue")
+    const criteriumTextInputValue = document.getElementById("criteriumTextInputValue")
+
+    const toggleSwitch1 = document.getElementById('toggleSwitch1');
+    const toggleSwitch2 = document.getElementById('toggleSwitch2');
+
+    const dynamicCriteriums = document.getElementById('dynamicCriteriums');
+    const chartContainer = document.getElementById('chart-container');
+    const lineChartContainer = document.getElementById('line-chart-container');
+    const downloadContainer = document.getElementById('download-container');
+    const modifiableTabulator = document.getElementById('modifiable-tabulator');
+    const heatmapContainer = document.getElementById('heatmap-container');
+    const heatmapFilter = document.getElementById('heatmap-filter');
+
+    const container = document.getElementById('extra-charts-container');
+    const graphs = container.querySelectorAll('div');
+
+    
+    const formulaSubmit = document.getElementById("criteriumFormulaSubmit") 
+    const textSubmit = document.getElementById("criteriumTextSubmit")
+
+    const dropdown = document.getElementById("dropdown");
+
+    const hiddenDiv = document.getElementById("after-classrooms")
+    const inputsHeaders = document.querySelectorAll('#headers input[type="text"]');
+
+    
+    const h4Elements = [
+      document.getElementById("h4-table"),
+      document.getElementById("h4-line-chart"),
+      document.getElementById("h4-heatmap"),
+      document.getElementById("h4-modifiable"),
+      document.getElementById("h4-download"),
+      document.getElementById("h4-extra")
+    ];
+    
+  
+    // Coloca os diferentes variaveis como conteudo dos inputs do formulário
+    settingsToValue([...['delimiter', 'hformat', 'dformat', 'headerh', 'headerd'], ...Array.from(inputsHeaders).map(input => input.id)])
+
+    // Botão entre input de ficheiro ou input de url 
+    toggleSwitch1.addEventListener('change', function() {
+      handleSwitch(csvFileInput, csvUrlInput, toggleSwitch1, true);
+    });
+
+    // Botão entre os diferentes critérios dinamicos
+    toggleSwitch2.addEventListener('change', function() {
+      handleSwitch(criteriumFormulaInputs, criteriumTextInputs, toggleSwitch2, false);
+    });
+
+    // Submeter Critério dinamico em formula
+    formulaSubmit.addEventListener("click", () => {
+      //console.log(criteriumFormulaInputValue.value)
+      schedulesData = evaluateDynamicFormulaCriterium(schedulesData, criteriumFormulaInputValue.value)
+      console.log(schedulesData)
+      createTabulator(schedulesData, heatmapContainer, downloadContainer, modifiableTabulator, h4Elements, graphs)
+      createLineChart(h4Elements)
+      //TODO Fazer Update aos Graficos
+    })
+
+    // Submeter Critério dinamico de texto 
+    textSubmit.addEventListener("click", () => {
+      schedulesData = evaluateDynamicTextCriterium(schedulesData, dropdown.value, criteriumTextInputValue.value)
+      console.log(schedulesData)
+      createTabulator(schedulesData, heatmapContainer, downloadContainer, modifiableTabulator, h4Elements, graphs)
+      createLineChart(h4Elements)
+      //TODO Fazer Update aos Graficos
+    })
+
+    //Fazer aparecer o formulário das configurações
+    showFormButton.addEventListener("click", () => {
+      if (form.style.display === "none") {
+        form.style.display = "block";
+      } else {
+        form.style.display = "none";
+      }
+    });
+
+    // Adicionar os diversos url caso sejam necessários
+    document.addEventListener("input", function (event) {
+      addNewInput('urlInput', 'Enter URL', 'urlInputs');
+    });
+    
+    // Receber e armazenar os valores das configurações
+    form.addEventListener("submit", function(event) {
+      event.preventDefault(); // Prevent the form from actually submitting
+
+      handleInputChange("delimiter", "csvSeparator");
+      handleInputChange("hformat", "hourFormat");
+      handleInputChange("dformat", "dateFormat");
+      handleInputChange("headerh", "hourColumns");
+      handleInputChange("headerd", "dateColumns");
+
+      let i = 0;
+      inputsHeaders.forEach(input => {
+        dictionary[defaultHeadersArray[i]] = input.value;
+        i++;
+      });
+
+      // Update dictionary using inputsHeaders and defaultHeadersArray
+      // inputsHeaders.forEach((input, index) => {
+      //  dictionary[defaultHeadersArray[index]] = input.value;
+      // });
+      alert("Alteração das configurações feita com sucesso!")
+    });
+
+    // Receber multiplos ficheiros de horários
+    document.getElementById("csvScheduleFileInput").addEventListener("change", function (e) {
+      const files = e.target.files;
+      schedulesData = []
+      filesProcessed = 0 
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        Papa.parse(file, {
+          delimiter: csvSeparator,
+          header: true,
+          error: function () {
+            filesProcessed += 1
+            console.log("Erro")
+            if(filesProcessed === files.length){
+              dynamicCriteriums.style.display = "block"
+              schedulesData = orderSchedulesData(schedulesData)
+              createTabulator(schedulesData, heatmapContainer, downloadContainer, modifiableTabulator, h4Elements, graphs)
+              createLineChart(h4Elements)
+            }
+          },
+          complete: function (results) {
+            const scheduleId = `Horário ${i + 1}`
+            const scheduleData = { data: results.data };
+            //scheduleData['criteriums'] = evaluateCriteriums(results, scheduleId); 
+            evaluateCriteriums(scheduleData)
+            schedulesData[scheduleId] = scheduleData;
+            console.log(schedulesData)
+            handleParsedData(results, i, e, hiddenDiv, false);
+            filesProcessed++
+            if(filesProcessed === files.length){ //Para só criar Tabulator após todos os ficheiros serem processados
+              dynamicCriteriums.style.display = "block"
+              schedulesData = orderSchedulesData(schedulesData)
+              createTabulator(schedulesData, heatmapContainer, downloadContainer, modifiableTabulator, h4Elements, graphs)
+              createLineChart(h4Elements)
+            }
+          }
+        });
+      }
+      updateDynamicCriteriums(dropdown)
+      populateOptions("formulaOptions", dynamicCriteriumsLists.formulaList);
+      populateOptions("textOptions", dynamicCriteriumsLists.textList);
+      saveSettings()
+    });
+
+    // Receber ficheiro da configuração das salas
+    document.getElementById("csvClassroomFileInput").addEventListener("change", function (e) {
+      const file = e.target.files[0];
+      dynamicCriteriums.style.display = "none"
+
+        Papa.parse(file, {
+          delimiter: csvSeparator,
+          header: true,
+          complete: function (results) {
+            handleParsedData(results, 0, e, hiddenDiv, true);
+            createClassRoomsDictionary(results)
+            console.log(classRoomDictionary) // Dicionário com as salas e as suas caracteristicas
+            dynamicCriteriums.style.display = "none"
+            heatmapContainer.innerHTML = ""
+            chartContainer.innerHTML = ""
+            lineChartContainer.innerHTML = ""
+            downloadContainer.innerHTML = ""
+            modifiableTabulator.innerHTML = ""
+            heatmapFilter.innerHTML = ""
+            h4Elements.forEach(element => {
+              element.style.display = 'none';
+            });
+            if (modifiableTabulator.classList.contains('tabulator')) {
+              modifiableTabulator.classList.remove('tabulator'); 
+            }
+            if (chartContainer.classList.contains('tabulator')) {
+              chartContainer.classList.remove('tabulator'); 
+            }
+            for(let i = 0; i < graphs.length; i++){
+              graphs[i].innerHTML = ''
+            }
+
+          }
+        });
+      saveSettings()
+    });
+
+    // Guardar valores dos inputs de URL
+    parseButton.addEventListener("click", (e) => {
+      const urlInputs = document.querySelectorAll('.urlInput');
+      const urls = [];
+
+      urlInputs.forEach(input => {
+        if (input.value.trim() !== '') {
+          urls.push(input.value.trim());
+        }
+      });
+      if (urls.length > 0) {
+        parseURLs(urls, e, hiddenDiv, h4Elements, graphs);
+      }
+    });
+
+  
+    document.getElementById("criteriumFormulaSubmit").addEventListener("click", function() {
+      const inputValue = document.getElementById("criteriumFormulaInputValue").value;
+      addToGlobalList(inputValue, dynamicCriteriumsLists.formulaList);
+      populateOptions("formulaOptions", dynamicCriteriumsLists.formulaList); // Update the datalist after submitting
+      saveSettings()
+      console.log(dynamicCriteriumsLists)
+    });
+  
+    document.getElementById("criteriumTextSubmit").addEventListener("click", function() {
+      const inputValue = document.getElementById("criteriumTextInputValue").value;
+      addToGlobalList(inputValue, dynamicCriteriumsLists.textList);
+      populateOptions("textOptions", dynamicCriteriumsLists.textList); // Update the datalist after submitting
+      saveSettings()
+      console.log(dynamicCriteriumsLists)
+    });
+
+
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,224 @@
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 30px;
+    height: 17px;
+  }
+  
+  /* Hide default checkbox */
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  /* Slider style */
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: -3px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #365486;
+    transition: .4s;
+    border-radius: 17px;
+  }
+  
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 13px;
+    width: 13px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  
+  /* Checkbox checked */
+  input:checked + .slider {
+    background-color: #0066ff;
+  }
+  
+  input:checked + .slider:before {
+    transform: translateX(9px);
+  }
+  
+  /* Rounded sliders */
+  .slider.round {
+    border-radius: 17px;
+  }
+  
+  .slider.round:before {
+    border-radius: 50%;
+  }
+
+  body {
+    text-align: center;
+    font-family: Arial, sans-serif;
+    background-color: #dcf2f1;
+    color: #365486;
+  }
+  
+  h3 {
+    color: #365486; /* Blue color for headings */
+  }
+  
+  input[type="file"],
+  input[type="text"],
+  select {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    outline: none;
+  }
+  
+  /* Styles for specific elements */
+  #after-classrooms,
+  #csvData,
+  #dynamicCriteriums {
+    color: #333;
+    padding: 10px;
+  }
+  
+  /* Make divs transparent */
+  #after-classrooms,
+  #csvData,
+  #dynamicCriteriums {
+    background-color: transparent;
+  }
+
+  #chart-container,
+  #line-chart-container, 
+  #modifiable-tabulator,
+  #download-container,
+  #heatmap-container {
+    width: 92.5%;
+    margin: 10px auto; /* Center the div horizontally */
+    text-align: center;
+  }
+
+  button, input[type="submit"]  {
+    padding: 8px 15px;
+    background-color: #0066ff;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-right: 10px;
+  }
+  
+  /* Style for h4 elements inside download-container */
+  h4 {
+    color: #365486;
+    margin-bottom: 10px;
+    text-align: center; 
+    display:none;
+  }
+
+  #extra-charts-container {
+    justify-content: center;
+    display: flex;
+    width: 92.5%;
+    flex-wrap: wrap;
+    gap: 20px; /* Adjust the gap between charts */
+    margin: 0 auto; /* Center horizontally */
+  }
+  
+  #extra-graph1,
+  #extra-graph2,
+  #extra-graph3 {
+    flex: 1;
+    max-width: calc(33.33% - 20px); /* Adjust the width of each chart */
+    /* You can set a min-width or min-height for responsiveness */
+  }
+
+  /* Media query for smaller devices */
+@media (max-width: 1100px) {
+  #extra-graph1,
+  #extra-graph2,
+  #extra-graph3 {
+    flex-basis: 100%; /* Display one chart per line on smaller devices */
+    max-width: 100%; /* Full width for smaller screens */
+  }
+}
+
+
+.title {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.title h1, .title h2 {
+  margin: 0; /* Remove margin from h1 and h2 */
+}
+
+.header-container img {
+  width: 150px; /* Adjust the width as needed */
+}
+
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap");
+:root {
+	--vs-primary: #0066ff;
+}
+
+/*Dialog Styles*/
+dialog {
+	padding: 1rem 3rem;
+	background: white;
+	max-width: 400px;
+	padding-top: 2rem;
+	border-radius: 20px;
+	border: 0;
+	box-shadow: 0 5px 30px 0 rgb(#0066ff / 30%);
+	animation: fadeIn 1s ease both;
+	&::backdrop {
+		animation: fadeIn 1s ease both;
+		background: rgb(#dcf2f1 / 40%);
+		z-index: 2;
+		backdrop-filter: blur(20px);
+	}
+	.x {
+		filter: grayscale(1);
+		border: none;
+		background: none;
+		position: absolute;
+		top: 15px;
+		right: 10px;
+		transition: ease filter, transform 0.3s;
+		cursor: pointer;
+		transform-origin: center;
+		&:hover {
+			filter: grayscale(0);
+			transform: scale(1.1);
+		}
+	}
+	h2 {
+		font-weight: 600;
+		font-size: 2rem;
+		padding-bottom: 1rem;
+	}
+	p {
+		font-size: 1rem;
+		line-height: 1.3rem;
+		padding: 0.5rem 0;
+		a {
+			&:visited {
+				color: rgb(var(--vs-primary));
+			}
+		}
+	}
+}
+
+
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
