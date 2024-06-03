@@ -1229,8 +1229,5 @@ function createRequisitesChart(data) {
 }
 
 
-import Genetics from "genetics-js"
-const { BinaryIndividual } = Genetics.BinaryIndividual
-
 
 
