@@ -173,6 +173,7 @@
         <button id="parseButton">Submeter URL</button>
       </div>
 
+
       <br>
       
     </div>
@@ -325,6 +326,12 @@
     <br>
     <h4 id="h4-download">Pode fazer o Download do conteúdo da tabela acima nos seguintes formatos</h4>
     <div id="download-container"></div>
+    <br>
+
+    <button id="usarPython">Usar Python</button>
+    <div id="mensagem"></div>
+    <div id="dadosRecebidos"></div>
+    <div id="dadosOtimizado"></div>
   
   <script>
 
@@ -555,6 +562,56 @@
       saveSettings()
       console.log(dynamicCriteriumsLists)
     });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+
+      const usarPythonButton = document.getElementById('usarPython');
+    
+      usarPythonButton.addEventListener('click', function() {
+        // Prepare timetable and room data (replace with your actual data)
+        const timetableData = "BANANAS"
+    
+
+    
+        // Send data to server using fetch API
+        fetch('http://127.0.0.1:5001/execute_python', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ timetable: timetableData})
+        })
+          .then(response => response.json())
+          .then(data => {
+            const mensagemElement = document.getElementById('mensagem');
+            if (data.error) {
+              mensagemElement.textContent = 'Erro: ' + data.error;
+            } else {
+              mensagemElement.textContent = data.message;
+    
+              // Access and log description to console
+              console.log(data.message)
+            }
+          })
+          .catch((error) => {
+            console.error('Erro:', error);
+            const mensagemElement = document.getElementById('mensagem');
+            mensagemElement.textContent = 'Erro ao conectar ao servidor.';
+          });
+      });
+    });
+  
+
+
+    
+
+  
+  
+
+
+
+
+
 
 
   </script>

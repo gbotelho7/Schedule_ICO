@@ -1221,6 +1221,7 @@ function createRequisitesChart(data) {
     }
   };
 
+
   // Render the FusionCharts instance
   FusionCharts.ready(function () {
     new FusionCharts(chartConfig).render();
