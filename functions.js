@@ -605,32 +605,31 @@ function createModifiableTabulator(scheduleData, elementList) {
   });
 }
 
-function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary){
+function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat){
   console.log(selectedScheduleData)
+  console.log(hourFormat)
+  console.log(dateFormat)
   document.getElementById('sendButton').addEventListener('click', function() {
     fetch('http://127.0.0.1:5000/process', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary})
+        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat})
     })
     .then(response => response.json())
     .then(data => {
-      const firstRow = data["primeira_linha"];
       const criteriums = data["criteriums"];
-      
-      let responseHtml = "<p><strong>Primeira linha:</strong></p>";
-      responseHtml += "<ul>";
-      responseHtml += "<br>" + JSON.stringify(firstRow) + "<br>";
+  
+      responseHtml = "<p><strong>Resultados do cálculo:</strong></p>";
+      responseHtml += "<p>Critério Dinâmico formula: " + criteriums["Contagem critério dinâmico formula"] + "</p>";
       responseHtml += "</ul>";
-      
       responseHtml += "<p><strong>Resultados do cálculo:</strong></p>";
       responseHtml += "<p>Sobrelotações: " + criteriums["Sobrelotações"] + "</p>";
-      responseHtml += "<p>Alunos a mais (Sobrelotações): " + criteriums["Alunos a mais (Sobrelotações)"] + "</p>";
-      //responseHtml += "<p>Sobreposições: " + criteriums["Sobreposições"] + "</p>";
-      responseHtml += "<p>Requisitos não cumpridos: " + criteriums["Requisitos não cumpridos"] + "</p>";
-      responseHtml += "<p>Aulas Sem Sala: " + criteriums["Aulas Sem Sala"] + "</p>";
+      // responseHtml += "<p>Alunos a mais (Sobrelotações): " + criteriums["Alunos a mais (Sobrelotações)"] + "</p>";
+      // //responseHtml += "<p>Sobreposições: " + criteriums["Sobreposições"] + "</p>";
+      // responseHtml += "<p>Requisitos não cumpridos: " + criteriums["Requisitos não cumpridos"] + "</p>";
+      // responseHtml += "<p>Aulas Sem Sala: " + criteriums["Aulas Sem Sala"] + "</p>";
       
       document.getElementById('response').innerHTML = responseHtml;
     })
@@ -690,7 +689,7 @@ function createTabulator(schedulesData, heatmapContainer, downloadContainer, mod
       createRequisitesChart(selectedScheduleData)
       modifiableDataTabulator = createModifiableTabulator(selectedScheduleData, elementList)
       insertDownloadButton(downloadContainer, selectedScheduleData, elementList);
-      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary)
+      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat)
     }
     else {
       heatmapContainer.innerHTML = ""
