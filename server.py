@@ -248,6 +248,8 @@ def process_message():
     selected_schedule_data_df, textCriteriaResults = evaluate_dynamic_text_criteria(selected_schedule_data_df, text_criterium_list)
     print(textCriteriaResults)
 
+    
+
 
 
 if __name__ == '__main__':
