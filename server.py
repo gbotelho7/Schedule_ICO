@@ -1,3 +1,4 @@
+import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
@@ -121,70 +122,50 @@ def convert_js_format_to_python(js_format):
 
 import math
 
-def evaluate_dynamic_formula_criterium(df, expression):
-    found_column_names = extract_column_names_from_expression(expression, df.columns)
-    true_count = 0  # Contador para o número de linhas verdadeiras
-    error_counter = 0
 
-    for index, row in df.iterrows():
-        error_occurred = False
-        row_specific_expression = expression
 
-        for column_name in found_column_names:
-            value = row[column_name]
-            row_specific_expression = row_specific_expression.replace(column_name, str(value))
-
-        try:
-            result = eval(row_specific_expression)
-            if result:
-                true_count += 1  # Incrementa o contador se a expressão for verdadeira para esta linha
-                df.at[index, expression] = True
-            else:
+def evaluate_dynamic_formula_criteria(df, expressions):
+    criteria_results = {}
+    
+    for expression in expressions:
+        expression = expression.strip()  # Remove any leading or trailing whitespace
+        found_column_names = extract_column_names_from_expression(expression, df.columns)
+        true_count = 0  # Counter for the number of true rows
+        error_counter = 0
+        
+        for index, row in df.iterrows():
+            error_occurred = False
+            row_specific_expression = expression
+            
+            for column_name in found_column_names:
+                value = row[column_name]
+                row_specific_expression = row_specific_expression.replace(column_name, str(value))
+            
+            try:
+                result = eval(row_specific_expression)
+                if result:
+                    true_count += 1  # Increment the counter if the expression is true for this row
+                    df.at[index, expression] = True
+                else:
+                    df.at[index, expression] = False
+            except Exception as error:
+                print(f"Error evaluating expression for row {index}: {error}")
+                error_occurred = True
+                error_counter += 1
                 df.at[index, expression] = False
-        except Exception as error:
-            print(f"Error evaluating expression for row {index}: {error}")
-            error_occurred = True
-            error_counter += 1
-            df.at[index, expression] = False
+        
+        if error_counter == len(df):
+            print(f"Ocorreu um erro na expressão '{expression}' e por isso não foram adicionados novos critérios, por favor, corrija a fórmula!")
+        
+        criteria_results[expression] = true_count
+    
+    print(criteria_results)
+    
+    return df, criteria_results
 
-    if error_counter == len(df):
-        print("Ocorreu um erro e por isso não foram adicionados novos critérios, por favor, corrija a fórmula!")
-
-    criterium_array = {
-        'Contagem critério dinâmico formula': true_count,
-    }
-
-    print(criterium_array)
-
-    return df, criterium_array
-
-
-# def evaluate_dynamic_formula_criterium(selected_schedule_data_df, expression):
-#     found_column_names = extract_column_names_from_expression(expression, selected_schedule_data_df.columns)
-#     true_count = 0  # Contador para o número de linhas verdadeiras
-#     error_counter = 0
-
-#     for index, row in selected_schedule_data_df.iterrows():
-#         error_occurred = False
-#         row_specific_expression = expression
-
-#         for column_name in found_column_names:
-#             value = row[column_name]
-#             row_specific_expression = row_specific_expression.replace(column_name, str(value))
-
-#         try:
-#             result = eval(row_specific_expression)
-#             if result:
-#                 true_count += 1  # Incrementa o contador se a expressão for verdadeira para esta linha
-#         except Exception as error:
-#             print(f"Error evaluating expression for row {index}: {error}")
-#             error_occurred = True
-#             error_counter += 1
-
-#     if error_counter == len(selected_schedule_data_df):
-#         print("Ocorreu um erro e por isso não foram adicionados novos critérios, por favor, corrija a fórmula!")
-
-#     return true_count
+# Example usage:
+# Assuming df is your DataFrame and 'expressions' is a string of comma-separated expressions
+# df, results = evaluate_dynamic_formula_criteria(df, 'expression1, expression2, expression3')
 
 
 def extract_column_names_from_expression(expression, all_column_names):
@@ -196,6 +177,31 @@ def extract_column_names_from_expression(expression, all_column_names):
 
 
 
+def check_for_exact_word_match(expression, input_word):
+    regex_string = fr'\b{re.escape(input_word)}\b(?![\w-])'
+    regex = re.compile(regex_string)
+    return bool(regex.search(expression))
+
+def evaluate_dynamic_text_criteria(selected_schedule_data_df, criteria_list):
+    results = {}
+    
+    for column, input_text in criteria_list:
+        input_parsed = input_text.replace('.', ' ')  # Problema com o Tabulator
+        field_name = f"{column}={input_parsed}"
+        true_count = 0
+        
+        for index, row in selected_schedule_data_df.iterrows():
+            if check_for_exact_word_match(row[column], input_text):
+                selected_schedule_data_df.at[index, field_name] = True
+                true_count += 1
+            else:
+                selected_schedule_data_df.at[index, field_name] = False
+        
+        results[field_name] = true_count
+
+    print(results)
+
+    return selected_schedule_data_df, results
 
 
 @app.route('/process', methods=['POST'])
@@ -205,6 +211,10 @@ def process_message():
     class_room_dictionary = data['classRoomDictionary']
     hour_format = data['hourFormat']
     date_format = data['dateFormat']
+    formula_criterium_list = data['formulaCriteriumList']
+    print(formula_criterium_list)
+    text_criterium_list = data['textCriteriumList']
+    print(text_criterium_list)
 
     hour_format = convert_js_format_to_python(hour_format)
     date_format = convert_js_format_to_python(date_format)
@@ -216,33 +226,29 @@ def process_message():
     show_selected_schedule_data_df = selected_schedule_data_df.head(2)
 
     #print(show_selected_schedule_data_df)
-
-
-
-
-
-    
-
     
     selected_schedule_data_df, overcrowding_criterium = criterium_overcrowding(selected_schedule_data_df)
     # df, overlapping_criterium = criterium_overlapping(selected_schedule_data_df, hour_format)
     # selected_schedule_data_df, class_requisites_criterium = criterium_class_requisites(selected_schedule_data_df, class_room_dictionary)
     
-    expression = "Lotação - Inscritos no turno > 20"
-    dynamic_evaluated_df, expression_criterium = evaluate_dynamic_formula_criterium(selected_schedule_data_df, expression)
+    # expression = "Lotação - Inscritos no turno > 20"
+    # dynamic_evaluated_df, expression_criterium = evaluate_dynamic_formula_criterium(selected_schedule_data_df, expression)
 
-
-    
     # criteriums = {**overcrowding_criterium, **overlapping_criterium, **class_requisites_criterium} 
-    criteriums = {**overcrowding_criterium, **expression_criterium}
+    # criteriums = {**overcrowding_criterium, **expression_criterium}
 
     # print("Criteriums:", criteriums)  # Debug message
 
-    return jsonify({"criteriums": criteriums})
+    # return jsonify({"criteriums": criteriums})
 
-   
-    # updated_schedules = evaluate_dynamic_formula_criterium(selected_schedule_data_df, expression)
-    # print(updated_schedules)
+    df, formulaCriteriaResults = evaluate_dynamic_formula_criteria(selected_schedule_data_df, formula_criterium_list)
+
+    print(formulaCriteriaResults)
+
+    selected_schedule_data_df, textCriteriaResults = evaluate_dynamic_text_criteria(selected_schedule_data_df, text_criterium_list)
+    print(textCriteriaResults)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

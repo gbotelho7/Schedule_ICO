@@ -605,17 +605,18 @@ function createModifiableTabulator(scheduleData, elementList) {
   });
 }
 
-function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat){
+function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
   console.log(selectedScheduleData)
   console.log(hourFormat)
   console.log(dateFormat)
   document.getElementById('sendButton').addEventListener('click', function() {
+
     fetch('http://127.0.0.1:5000/process', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat})
+        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList})
     })
     .then(response => response.json())
     .then(data => {
@@ -689,7 +690,7 @@ function createTabulator(schedulesData, heatmapContainer, downloadContainer, mod
       createRequisitesChart(selectedScheduleData)
       modifiableDataTabulator = createModifiableTabulator(selectedScheduleData, elementList)
       insertDownloadButton(downloadContainer, selectedScheduleData, elementList);
-      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat)
+      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, window.dictionary.hourFormat, window.dictionary.dateFormat, formulaCriteriumList, textCriteriumList, window.dictionary.Início, window.dictionary.Fim, window.dictionary.Dia)
     }
     else {
       heatmapContainer.innerHTML = ""

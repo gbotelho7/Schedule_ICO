@@ -394,6 +394,8 @@
       handleSwitch(criteriumFormulaInputs, criteriumTextInputs, toggleSwitch2, false);
     });
 
+
+
     // Submeter Critério dinamico em formula
     formulaSubmit.addEventListener("click", () => {
       //console.log(criteriumFormulaInputValue.value)
@@ -546,18 +548,23 @@
       }
     });
 
+    let formulaCriteriumList = []
   
     document.getElementById("criteriumFormulaSubmit").addEventListener("click", function() {
       const inputValue = document.getElementById("criteriumFormulaInputValue").value;
       addToGlobalList(inputValue, dynamicCriteriumsLists.formulaList);
+      formulaCriteriumList.push(inputValue)
       populateOptions("formulaOptions", dynamicCriteriumsLists.formulaList); // Update the datalist after submitting
       saveSettings()
       console.log(dynamicCriteriumsLists)
     });
+
+    let textCriteriumList = []
   
     document.getElementById("criteriumTextSubmit").addEventListener("click", function() {
       const inputValue = document.getElementById("criteriumTextInputValue").value;
       addToGlobalList(inputValue, dynamicCriteriumsLists.textList);
+      textCriteriumList.push([dropdown.value, inputValue]);
       populateOptions("textOptions", dynamicCriteriumsLists.textList); // Update the datalist after submitting
       saveSettings()
       console.log(dynamicCriteriumsLists)
