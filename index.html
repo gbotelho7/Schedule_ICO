@@ -173,6 +173,7 @@
         <button id="parseButton">Submeter URL</button>
       </div>
 
+
       <br>
       
     </div>
@@ -325,6 +326,12 @@
     <br>
     <h4 id="h4-download">Pode fazer o Download do conteúdo da tabela acima nos seguintes formatos</h4>
     <div id="download-container"></div>
+    <br>
+
+    <h1>Comunicação HTML-Python</h1>
+    <button id="sendButton">Enviar Mensagem</button>
+    <p id="response"></p>
+
   
   <script>
 
@@ -386,6 +393,8 @@
     toggleSwitch2.addEventListener('change', function() {
       handleSwitch(criteriumFormulaInputs, criteriumTextInputs, toggleSwitch2, false);
     });
+
+
 
     // Submeter Critério dinamico em formula
     formulaSubmit.addEventListener("click", () => {
@@ -539,22 +548,31 @@
       }
     });
 
+    let formulaCriteriumList = []
   
     document.getElementById("criteriumFormulaSubmit").addEventListener("click", function() {
       const inputValue = document.getElementById("criteriumFormulaInputValue").value;
       addToGlobalList(inputValue, dynamicCriteriumsLists.formulaList);
+      formulaCriteriumList.push(inputValue)
       populateOptions("formulaOptions", dynamicCriteriumsLists.formulaList); // Update the datalist after submitting
       saveSettings()
       console.log(dynamicCriteriumsLists)
     });
+
+    let textCriteriumList = []
   
     document.getElementById("criteriumTextSubmit").addEventListener("click", function() {
       const inputValue = document.getElementById("criteriumTextInputValue").value;
       addToGlobalList(inputValue, dynamicCriteriumsLists.textList);
+      textCriteriumList.push([dropdown.value, inputValue]);
       populateOptions("textOptions", dynamicCriteriumsLists.textList); // Update the datalist after submitting
       saveSettings()
       console.log(dynamicCriteriumsLists)
     });
+
+  
+    
+    
 
 
   </script>

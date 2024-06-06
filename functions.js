@@ -605,6 +605,39 @@ function createModifiableTabulator(scheduleData, elementList) {
   });
 }
 
+function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
+  console.log(selectedScheduleData)
+  console.log(hourFormat)
+  console.log(dateFormat)
+  document.getElementById('sendButton').addEventListener('click', function() {
+
+    fetch('http://127.0.0.1:5000/process', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList})
+    })
+    .then(response => response.json())
+    .then(data => {
+      const criteriums = data["criteriums"];
+  
+      responseHtml = "<p><strong>Resultados do cálculo:</strong></p>";
+      responseHtml += "<p>Critério Dinâmico formula: " + criteriums["Contagem critério dinâmico formula"] + "</p>";
+      responseHtml += "</ul>";
+      responseHtml += "<p><strong>Resultados do cálculo:</strong></p>";
+      responseHtml += "<p>Sobrelotações: " + criteriums["Sobrelotações"] + "</p>";
+      // responseHtml += "<p>Alunos a mais (Sobrelotações): " + criteriums["Alunos a mais (Sobrelotações)"] + "</p>";
+      // //responseHtml += "<p>Sobreposições: " + criteriums["Sobreposições"] + "</p>";
+      // responseHtml += "<p>Requisitos não cumpridos: " + criteriums["Requisitos não cumpridos"] + "</p>";
+      // responseHtml += "<p>Aulas Sem Sala: " + criteriums["Aulas Sem Sala"] + "</p>";
+      
+      document.getElementById('response').innerHTML = responseHtml;
+    })
+    .catch(error => console.error('Error:', error));
+  });
+}
+
 
 /**
  * Cria uma tabela Tabulator com os dados fornecidos.
@@ -657,6 +690,7 @@ function createTabulator(schedulesData, heatmapContainer, downloadContainer, mod
       createRequisitesChart(selectedScheduleData)
       modifiableDataTabulator = createModifiableTabulator(selectedScheduleData, elementList)
       insertDownloadButton(downloadContainer, selectedScheduleData, elementList);
+      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, window.dictionary.hourFormat, window.dictionary.dateFormat, formulaCriteriumList, textCriteriumList, window.dictionary.Início, window.dictionary.Fim, window.dictionary.Dia)
     }
     else {
       heatmapContainer.innerHTML = ""
@@ -1220,6 +1254,7 @@ function createRequisitesChart(data) {
       }))
     }
   };
+
 
   // Render the FusionCharts instance
   FusionCharts.ready(function () {
