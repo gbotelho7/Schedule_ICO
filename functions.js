@@ -690,7 +690,7 @@ function createTabulator(schedulesData, heatmapContainer, downloadContainer, mod
       createRequisitesChart(selectedScheduleData)
       modifiableDataTabulator = createModifiableTabulator(selectedScheduleData, elementList)
       insertDownloadButton(downloadContainer, selectedScheduleData, elementList);
-      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, window.dictionary.hourFormat, window.dictionary.dateFormat, formulaCriteriumList, textCriteriumList, window.dictionary.Início, window.dictionary.Fim, window.dictionary.Dia)
+      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList)
     }
     else {
       heatmapContainer.innerHTML = ""
