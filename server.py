@@ -8,6 +8,7 @@ from jmetal.core.solution import FloatSolution
 from jmetal.operator import SBXCrossover, PolynomialMutation
 from jmetal.util.termination_criterion import StoppingByEvaluations
 from jmetal.core.problem import Problem
+import random
 
 app = Flask(__name__)
 CORS(app)
@@ -299,29 +300,38 @@ class TimetableProblem(Problem):
 
     def create_solution(self) -> FloatSolution:
         new_solution = FloatSolution(self.lower_bound, self.upper_bound, self.number_of_objectives)
-    
-        # Assuming the DataFrame represents a timetable where each row is a class/session
+
+        # Load room characteristics from CSV
+        room_characteristics_df = pd.read_csv('CaracterizaçãoDasSalas.csv')
+        
+        # Function to find suitable rooms based on class requirements
+        def find_suitable_rooms(class_requirements):
+            suitable_rooms = []
+            for index, row in room_characteristics_df.iterrows():
+                room_characteristics = row['Características reais da sala'].split(';')  # Assuming characteristics are semi-colon separated
+                if all(req in room_characteristics for req in class_requirements.split(';')):
+                    suitable_rooms.append(row['Nome sala'])
+            return suitable_rooms
+
         num_rows, num_cols = self.df.shape
         
-        # Initializing a list to hold the solution variables
         variables = []
         
-        for i in range(num_rows):
-            row_variables = []
-            for j in range(num_cols):
-                # Generate variables based on some logic, here using uniform distribution
-                # This can be refined to better reflect the problem constraints
-                if self.df.columns[j] in ['Inscritos no turno', 'Lotação']:
-                    value = np.random.randint(0, 100)  # Simulate enrollment and capacity between 0 and 100
-                elif self.df.columns[j] in ['Início', 'Fim']:
-                    # Simulate time as a fraction of a day (0 to 1)
-                    value = np.random.uniform(0.0, 1.0)
-                else:
-                    value = np.random.uniform(0.0, 1.0)  # Generic value for other columns
-                row_variables.append(value)
-            variables.extend(row_variables)
+        for index, row in self.df.iterrows():
+            class_requirements = row['Características da sala pedida para a aula']
+            suitable_rooms = find_suitable_rooms(class_requirements)
+            
+            if suitable_rooms:
+                chosen_room = random.choice(suitable_rooms)
+            else:
+                chosen_room = "No suitable room"
+            
+            # Append the chosen room or its index to the solution variables
+            variables.append(chosen_room)
+            
+            # Optionally, update the DataFrame with the assigned room
+            self.df.at[index, 'Sala da aula'] = chosen_room
         
-        # Assigning the generated variables to the solution
         new_solution.variables = variables
         
         return new_solution
