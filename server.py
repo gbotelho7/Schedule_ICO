@@ -3,6 +3,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 import pandas as pd
+from jmetal.algorithm.multiobjective.nsgaii import NSGAII
+from jmetal.core.solution import FloatSolution
+from jmetal.operator import SBXCrossover, PolynomialMutation
+from jmetal.util.termination_criterion import StoppingByEvaluations
+from jmetal.core.problem import Problem
 
 app = Flask(__name__)
 CORS(app)
@@ -204,7 +209,6 @@ def evaluate_dynamic_text_criteria(selected_schedule_data_df, criteria_list):
     return selected_schedule_data_df, results
 
 
-@app.route('/process', methods=['POST'])
 def process_message():
     data = request.get_json()
     selected_schedule_data = data['selectedScheduleData']
@@ -237,9 +241,10 @@ def process_message():
     # criteriums = {**overcrowding_criterium, **overlapping_criterium, **class_requisites_criterium} 
     # criteriums = {**overcrowding_criterium, **expression_criterium}
 
+    criteriums = {**overcrowding_criterium}
     # print("Criteriums:", criteriums)  # Debug message
 
-    # return jsonify({"criteriums": criteriums})
+    return jsonify({"criteriums": criteriums})
 
     df, formulaCriteriaResults = evaluate_dynamic_formula_criteria(selected_schedule_data_df, formula_criterium_list)
 
@@ -248,7 +253,118 @@ def process_message():
     selected_schedule_data_df, textCriteriaResults = evaluate_dynamic_text_criteria(selected_schedule_data_df, text_criterium_list)
     print(textCriteriaResults)
 
+class TimetableProblem(Problem):
+    def __init__(self, df: pd.DataFrame, class_room_dictionary: dict):
+        super(TimetableProblem, self).__init__()
+        self.df = df
+        self.class_room_dictionary = class_room_dictionary
+        self._number_of_variables = df.shape[0] * df.shape[1]
+        self._number_of_objectives = 4
+        self._number_of_constraints = 0
+        self.lower_bound = [0.0] * self._number_of_variables
+        self.upper_bound = [1.0] * self._number_of_variables
 
+    @property
+    def number_of_variables(self):
+        return self._number_of_variables
+
+    @property
+    def number_of_objectives(self):
+        return self._number_of_objectives
+
+    @property
+    def number_of_constraints(self):
+        return self._number_of_constraints
+
+    @property
+    def name(self):
+        return 'TimetableProblem'
+
+    def evaluate(self, solution: FloatSolution) -> FloatSolution:
+        # Calcular critérios
+        df, overcrowding_criterium = criterium_overcrowding(self.df)
+        df, overlapping_criterium = criterium_overlapping(self.df, "%H:%M:%S")
+        df, class_requisites_criterium = criterium_class_requisites(self.df, self.class_room_dictionary)
+        
+        # Funções objetivo
+        objectives = [
+            overcrowding_criterium['Alunos a mais (Sobrelotações)'],
+            overlapping_criterium['Sobreposições'],
+            class_requisites_criterium['Requisitos não cumpridos'],
+            class_requisites_criterium['Aulas Sem Sala']
+        ]
+        
+        solution.objectives = objectives[:self.number_of_objectives]  # Adjust the objectives based on the defined number
+        return solution
+
+    def create_solution(self) -> FloatSolution:
+        new_solution = FloatSolution(self.lower_bound, self.upper_bound, self.number_of_objectives)
+    
+        # Assuming the DataFrame represents a timetable where each row is a class/session
+        num_rows, num_cols = self.df.shape
+        
+        # Initializing a list to hold the solution variables
+        variables = []
+        
+        for i in range(num_rows):
+            row_variables = []
+            for j in range(num_cols):
+                # Generate variables based on some logic, here using uniform distribution
+                # This can be refined to better reflect the problem constraints
+                if self.df.columns[j] in ['Inscritos no turno', 'Lotação']:
+                    value = np.random.randint(0, 100)  # Simulate enrollment and capacity between 0 and 100
+                elif self.df.columns[j] in ['Início', 'Fim']:
+                    # Simulate time as a fraction of a day (0 to 1)
+                    value = np.random.uniform(0.0, 1.0)
+                else:
+                    value = np.random.uniform(0.0, 1.0)  # Generic value for other columns
+                row_variables.append(value)
+            variables.extend(row_variables)
+        
+        # Assigning the generated variables to the solution
+        new_solution.variables = variables
+        
+        return new_solution
+
+@app.route('/process', methods=['POST'])
+def optimize():
+    data = request.get_json()
+    selected_schedule_data = data['selectedScheduleData']
+    class_room_dictionary = data['classRoomDictionary']
+    hour_format = data['hourFormat']
+    date_format = data['dateFormat']
+
+    hour_format = convert_js_format_to_python(hour_format)
+    date_format = convert_js_format_to_python(date_format)
+
+
+    df = pd.DataFrame(selected_schedule_data)
+   
+    problem = TimetableProblem(df, class_room_dictionary)
+
+    algorithm = NSGAII(
+        problem=problem,
+        population_size=10,
+        offspring_population_size=10,
+        mutation=PolynomialMutation(probability=0.1, distribution_index=20),
+        crossover=SBXCrossover(probability=0.9, distribution_index=20),
+        termination_criterion=StoppingByEvaluations(max_evaluations=100)
+    )
+
+    algorithm.run()
+
+    result = algorithm.get_result()
+
+    """ for solution in result:
+        print(f'Solution: {solution.variables}')
+        print(f'Objectives: {solution.objectives}') """
+
+    best_solution = result[0].variables
+    optimized_timetable = pd.DataFrame(
+    [best_solution[i:i+df.shape[1]] for i in range(0, len(best_solution), df.shape[1])],
+    columns=df.columns
+    )
+    print(optimized_timetable)
 
 if __name__ == '__main__':
     app.run(debug=True)

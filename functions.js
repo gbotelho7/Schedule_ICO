@@ -623,7 +623,7 @@ function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDiction
       const criteriums = data["criteriums"];
   
       responseHtml = "<p><strong>Resultados do cálculo:</strong></p>";
-      responseHtml += "<p>Critério Dinâmico formula: " + criteriums["Contagem critério dinâmico formula"] + "</p>";
+      // responseHtml += "<p>Critério Dinâmico formula: " + criteriums["Contagem critério dinâmico formula"] + "</p>";
       responseHtml += "</ul>";
       responseHtml += "<p><strong>Resultados do cálculo:</strong></p>";
       responseHtml += "<p>Sobrelotações: " + criteriums["Sobrelotações"] + "</p>";
