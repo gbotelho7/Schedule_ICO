@@ -42,7 +42,7 @@ def criterium_overcrowding(df):
         'Alunos a mais (Sobrelotações)': count_total_students_overcrowding
     }
 
-    print("Criterium Overcrowding Array:", criterium_array)  # Debug message
+    # print("Criterium Overcrowding Array:", criterium_array)  # Debug message
 
     return df, criterium_array
 
@@ -72,7 +72,7 @@ def criterium_overlapping(df, hour_format):
         'Sobreposições': count_overlapping
     }
 
-    print("Criterium Overlapping Array:", criterium_array)  # Debug message
+    # print("Criterium Overlapping Array:", criterium_array)  # Debug message
 
     return df, criterium_array 
 
@@ -107,7 +107,7 @@ def criterium_class_requisites(df, class_room_dictionary):
         'Aulas Sem Sala': countNoClassroom
     }
 
-    print(criterium_array)
+    # print(criterium_array)
 
     return df, criterium_array
 
@@ -165,7 +165,7 @@ def evaluate_dynamic_formula_criteria(df, expressions):
         
         criteria_results[expression] = true_count
     
-    print(criteria_results)
+    # print(criteria_results)
     
     return df, criteria_results
 
@@ -205,7 +205,7 @@ def evaluate_dynamic_text_criteria(selected_schedule_data_df, criteria_list):
         
         results[field_name] = true_count
 
-    print(results)
+    # print(results)
 
     return selected_schedule_data_df, results
 
@@ -232,7 +232,7 @@ def process_message():
 
     #print(show_selected_schedule_data_df)
     
-    selected_schedule_data_df, overcrowding_criterium = criterium_overcrowding(selected_schedule_data_df)
+    #selected_schedule_data_df, overcrowding_criterium = criterium_overcrowding(selected_schedule_data_df)
     # df, overlapping_criterium = criterium_overlapping(selected_schedule_data_df, hour_format)
     # selected_schedule_data_df, class_requisites_criterium = criterium_class_requisites(selected_schedule_data_df, class_room_dictionary)
     
@@ -242,17 +242,17 @@ def process_message():
     # criteriums = {**overcrowding_criterium, **overlapping_criterium, **class_requisites_criterium} 
     # criteriums = {**overcrowding_criterium, **expression_criterium}
 
-    criteriums = {**overcrowding_criterium}
+    #criteriums = {**overcrowding_criterium}
     # print("Criteriums:", criteriums)  # Debug message
 
-    return jsonify({"criteriums": criteriums})
+    #return jsonify({"criteriums": criteriums})
 
-    df, formulaCriteriaResults = evaluate_dynamic_formula_criteria(selected_schedule_data_df, formula_criterium_list)
+    #df, formulaCriteriaResults = evaluate_dynamic_formula_criteria(selected_schedule_data_df, formula_criterium_list)
 
-    print(formulaCriteriaResults)
+    #print(formulaCriteriaResults)
 
-    selected_schedule_data_df, textCriteriaResults = evaluate_dynamic_text_criteria(selected_schedule_data_df, text_criterium_list)
-    print(textCriteriaResults)
+    #selected_schedule_data_df, textCriteriaResults = evaluate_dynamic_text_criteria(selected_schedule_data_df, text_criterium_list)
+    #print(textCriteriaResults)
 
 class TimetableProblem(Problem):
     def __init__(self, df: pd.DataFrame, class_room_dictionary: dict):
@@ -284,13 +284,13 @@ class TimetableProblem(Problem):
     def evaluate(self, solution: FloatSolution) -> FloatSolution:
         # Calcular critérios
         df, overcrowding_criterium = criterium_overcrowding(self.df)
-        df, overlapping_criterium = criterium_overlapping(self.df, "%H:%M:%S")
+        #df, overlapping_criterium = criterium_overlapping(self.df, "%H:%M:%S")
         df, class_requisites_criterium = criterium_class_requisites(self.df, self.class_room_dictionary)
         
         # Funções objetivo
         objectives = [
             overcrowding_criterium['Alunos a mais (Sobrelotações)'],
-            overlapping_criterium['Sobreposições'],
+            #overlapping_criterium['Sobreposições'],
             class_requisites_criterium['Requisitos não cumpridos'],
             class_requisites_criterium['Aulas Sem Sala']
         ]
@@ -349,7 +349,9 @@ def optimize():
 
 
     df = pd.DataFrame(selected_schedule_data)
-   
+    print("")
+    print(df.head(1))
+    print("")
     problem = TimetableProblem(df, class_room_dictionary)
 
     algorithm = NSGAII(
