@@ -506,6 +506,7 @@
           header: true,
           complete: function (results) {
             handleParsedData(results, 0, e, hiddenDiv, true);
+            carateristicasSalas = results
             createClassRoomsDictionary(results)
             console.log(classRoomDictionary) // Dicionário com as salas e as suas caracteristicas
             dynamicCriteriums.style.display = "none"

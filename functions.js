@@ -605,7 +605,7 @@ function createModifiableTabulator(scheduleData, elementList) {
   });
 }
 
-function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
+function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList, carateristicasSalas){
   console.log(selectedScheduleData)
   console.log(hourFormat)
   console.log(dateFormat)
@@ -616,7 +616,7 @@ function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDiction
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList})
+        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, carateristicasSalas: carateristicasSalas})
     })
     .then(response => response.json())
     .then(data => {
@@ -690,7 +690,7 @@ function createTabulator(schedulesData, heatmapContainer, downloadContainer, mod
       createRequisitesChart(selectedScheduleData)
       modifiableDataTabulator = createModifiableTabulator(selectedScheduleData, elementList)
       insertDownloadButton(downloadContainer, selectedScheduleData, elementList);
-      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList)
+      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList, carateristicasSalas)
     }
     else {
       heatmapContainer.innerHTML = ""

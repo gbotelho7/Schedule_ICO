@@ -313,6 +313,8 @@ def optimize():
     data = request.get_json()
     selected_schedule_data = data['selectedScheduleData']
     class_room_dictionary = data['classRoomDictionary']
+    carateristicas_Salas = data['carateristicasSalas']
+    print(carateristicas_Salas)
 
     df = pd.DataFrame(selected_schedule_data)
     print("")
