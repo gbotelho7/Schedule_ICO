@@ -1,17 +1,19 @@
+import random
 import pandas as pd
 from jmetal.core.problem import PermutationProblem
 from jmetal.core.solution import PermutationSolution
-from jmetal.algorithm.multiobjective.nsgaii import NSGAII
-from jmetal.operator import PermutationSwapMutation, PMXCrossover, CXCrossover, NullCrossover
+from jmetal.operator import PMXCrossover, PermutationSwapMutation
+from jmetal.algorithm.singleobjective.genetic_algorithm import GeneticAlgorithm
+from jmetal.util.observer import ProgressBarObserver
 from jmetal.util.termination_criterion import StoppingByEvaluations
-import random
 
 class RoomAssignmentProblem(PermutationProblem):
+
     def name(self) -> str:
         return 'Room Assignment Problem'
 
     def number_of_constraints(self) -> int:
-        return 1
+        return 0
 
     def number_of_objectives(self) -> int:
         return self.number_of_objectives
@@ -26,10 +28,7 @@ class RoomAssignmentProblem(PermutationProblem):
 
         self.number_of_variables = len(schedule_df)
         self.number_of_objectives = 2  # Example: minimize distance, balance usage
-        self.number_of_constraints = 1  # Example: room capacity constraint
-
-        self.lower_bound = [0] * self.number_of_variables
-        self.upper_bound = [len(rooms_df) - 1] * self.number_of_variables
+        self.number_of_constraints = 0  # No constraints
 
         self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
         self.obj_labels = ['Total Distance', 'Balance Usage']
@@ -43,11 +42,6 @@ class RoomAssignmentProblem(PermutationProblem):
             room_index = solution.variables[i]
             room_info = self.rooms_df.iloc[room_index]
 
-            # Constraint: Room capacity
-            if room_info['Capacidade Normal'] < class_info['Inscritos no turno']:
-                solution.constraints[0] = -1
-                return
-
             # Placeholder: Calculate total distance (modify as needed)
             total_distance += abs(room_index - i)
 
@@ -59,7 +53,6 @@ class RoomAssignmentProblem(PermutationProblem):
 
         solution.objectives[0] = total_distance
         solution.objectives[1] = balance_usage
-        solution.constraints[0] = 0
 
     def create_solution(self):
         solution = PermutationSolution(
@@ -67,37 +60,37 @@ class RoomAssignmentProblem(PermutationProblem):
             number_of_objectives=self.number_of_objectives,
             number_of_constraints=self.number_of_constraints
         )
-        solution.variables = [random.randint(self.lower_bound[i], self.upper_bound[i]) for i in
-                              range(self.number_of_variables)]
+        solution.variables = random.sample(range(len(self.rooms_df)), self.number_of_variables)
         return solution
 
-
+# Assuming rooms_df and schedule_df are your DataFrames with the necessary data
 schedule_df = pd.read_csv('testeHorario.csv', delimiter=';')
 rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';')
 
-# Define the problem
-problem = RoomAssignmentProblem(rooms_df=rooms_df, schedule_df=schedule_df)
+problem = RoomAssignmentProblem(rooms_df, schedule_df)
 
-# Configure the algorithm
-algorithm = NSGAII(
+# Define the crossover and mutation operators
+crossover_operator = PMXCrossover(probability=0.9)
+mutation_operator = PermutationSwapMutation(probability=0.1)
+
+# Define the algorithm
+algorithm = GeneticAlgorithm(
     problem=problem,
     population_size=100,
     offspring_population_size=100,
-    mutation=PermutationSwapMutation(probability=0.1),
-    crossover=PMXCrossover(probability=0.9),
-    # crossover=CXCrossover(probability=0.9),
-    # crossover=NullCrossover(),
-    termination_criterion=StoppingByEvaluations(max_evaluations=10000)
+    mutation=mutation_operator,
+    crossover=crossover_operator,
+    termination_criterion=StoppingByEvaluations(max_evaluations=1000)
 )
+
+progress_bar = ProgressBarObserver(max=100)
+algorithm.observable.register(progress_bar)
 
 # Run the algorithm
 algorithm.run()
 
-# Get results
-result = algorithm.get_result()
+# Get the results
+solution = algorithm.get_result()
 
-# Print solutions
-for solution in result:
-    print(f"Variables: {solution.variables}")
-    print(f"Objectives: {solution.objectives}")
-    print(f"Constraints: {solution.constraints}")
+print('Solution:', solution.variables)
+print('Objectives:', solution.objectives)
