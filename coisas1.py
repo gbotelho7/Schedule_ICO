@@ -7,8 +7,8 @@ from jmetal.algorithm.singleobjective.genetic_algorithm import GeneticAlgorithm
 from jmetal.util.observer import ProgressBarObserver
 from jmetal.util.termination_criterion import StoppingByEvaluations
 
-class RoomAssignmentProblem(PermutationProblem):
 
+class RoomAssignmentProblem(PermutationProblem):
     def name(self) -> str:
         return 'Room Assignment Problem'
 
@@ -60,31 +60,42 @@ class RoomAssignmentProblem(PermutationProblem):
             number_of_objectives=self.number_of_objectives,
             number_of_constraints=self.number_of_constraints
         )
-        solution.variables = random.sample(range(len(self.rooms_df)), self.number_of_variables)
+
+        if self.number_of_variables > len(self.rooms_df):
+            # Repeat room indices to match the number of variables
+            repeated_rooms = (list(range(len(self.rooms_df))) * (self.number_of_variables // len(self.rooms_df) + 1))[
+                             :self.number_of_variables]
+            solution.variables = random.sample(repeated_rooms, self.number_of_variables)
+        else:
+            solution.variables = random.sample(range(len(self.rooms_df)), self.number_of_variables)
+
+        # print(solution.variables)
         return solution
 
+
 # Assuming rooms_df and schedule_df are your DataFrames with the necessary data
-schedule_df = pd.read_csv('testeHorario.csv', delimiter=';', encoding="utf-8")
+# schedule_df = pd.read_csv('testeHorario.csv', delimiter=';', encoding="utf-8")
+schedule_df = pd.read_csv('HorarioDeExemplo - Copy (2).csv', delimiter=';', encoding="utf-8")
 rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
 
 problem = RoomAssignmentProblem(rooms_df, schedule_df)
 
 # Define the crossover and mutation operators
-crossover_operator = PMXCrossover(probability=0.9)
-mutation_operator = PermutationSwapMutation(probability=0.1)
+crossover_operator = PMXCrossover(probability=0.8)
+mutation_operator = PermutationSwapMutation(probability=0.2)
 
 # Define the algorithm
 algorithm = GeneticAlgorithm(
     problem=problem,
-    population_size=100,
-    offspring_population_size=100,
+    population_size=10,
+    offspring_population_size=10,
     mutation=mutation_operator,
     crossover=crossover_operator,
-    termination_criterion=StoppingByEvaluations(max_evaluations=1000)
+    termination_criterion=StoppingByEvaluations(max_evaluations=100)
 )
 
-progress_bar = ProgressBarObserver(max=100)
-algorithm.observable.register(progress_bar)
+# progress_bar = ProgressBarObserver(max=100)
+# algorithm.observable.register(progress_bar)
 
 # Run the algorithm
 algorithm.run()
@@ -95,26 +106,35 @@ solution = algorithm.get_result()
 print('Solution:', solution.variables)
 print('Objectives:', solution.objectives)
 
-import pandas as pd
-
 # Assuming 'solution' is the obtained solution from the genetic algorithm
 room_assignments = solution.variables
 
 # Create an empty list to store the rows
-assigned_rooms_rows = []
+# assigned_rooms_rows = []
+#
+# # Map room assignments to class schedule
+# for i, room_index in enumerate(room_assignments):
+#     class_info = schedule_df.iloc[i]
+#     room_name = rooms_df.iloc[room_index]['Nome sala']
+#
+#     # Create a new row with class info and assigned room info
+#     new_row = pd.concat([class_info, pd.Series({'Assigned Room': room_name})])
+#     assigned_rooms_rows.append(new_row)
+#
+# # Create a DataFrame from the list of rows
+# assigned_rooms_df = pd.concat(assigned_rooms_rows, axis=1).transpose()
+# Map room assignments to class schedule and replace 'Sala da aula' with 'Nome sala'
 
-# Map room assignments to class schedule
 for i, room_index in enumerate(room_assignments):
-    class_info = schedule_df.iloc[i]
-    room_info = rooms_df.iloc[room_index]
+    room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
+    capacity = rooms_df.iloc[room_index]['Capacidade Normal']
 
-    # Create a new row with class info and assigned room info
-    new_row = pd.concat([class_info, room_info], ignore_index=True)
-    assigned_rooms_rows.append(new_row)
+    schedule_df.at[i, 'Sala da aula'] = room_name  # Replace 'Sala da aula' with the room name
+    schedule_df.at[i, 'Lotação'] = capacity
 
-# Create a DataFrame from the list of rows
-assigned_rooms_df = pd.concat(assigned_rooms_rows, axis=1).transpose()
+# Save the modified schedule_df DataFrame to a CSV file
+schedule_df.to_csv('modified_schedule.csv', index=False, sep=';', encoding="utf-8")
+
 
 # Save the assigned rooms DataFrame to a CSV file
-assigned_rooms_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
-
+schedule_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
