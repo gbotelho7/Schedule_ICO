@@ -256,18 +256,13 @@ def process_message():
 
 class TimetableProblem(PermutationSolution):
     def __init__(self, df: pd.DataFrame, class_room_dictionary: dict):
-        super(TimetableProblem, self).__init__()
+        super(TimetableProblem, self).__init__(number_of_variables=len(df), number_of_objectives=3)
         self.df = df
         self.class_room_dictionary = class_room_dictionary
-        self.number_of_courses = len(df)
-        self.number_of_time_slots = len(df['Início'].unique())
-        self.number_of_rooms = len(class_room_dictionary)
-        self.number_of_variables = self.number_of_courses
-        self.number_of_objectives = 3
         self.number_of_constraints = 0
 
-        self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
-        self.obj_labels = ['overcrowding', 'ma_atribuição', 'sem_sala']
+        #self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
+        #aself.obj_labels = ['overcrowding', 'ma_atribuição', 'sem_sala']
 
     @property
     def name(self):
@@ -276,14 +271,19 @@ class TimetableProblem(PermutationSolution):
     def evaluate(self, solution: PermutationSolution) -> PermutationSolution:
         df = self.df.copy()
         assignments = solution.variables
-        for i, (time_slot, room) in enumerate(assignments):
-            df.at[i, 'Início'], df.at[i, 'Fim'] = time_slot
+        for i, room in enumerate(assignments):
             df.at[i, 'Sala da aula'] = room
 
+            room_details = self.class_room_dictionary[room]
+            #print(room_details)
+            df.at[i, 'Lotação'] = room_details.get('Capacidade Normal')
+            df.at[i, 'Características reais da sala'] = {k: v for k, v in room_details.items() if k != 'Capacidade Normal'}
+
+        self.df = df
         # Calcular critérios
-        a, overcrowding_criterium = criterium_overcrowding(df)
+        a, overcrowding_criterium = criterium_overcrowding(self.df)
         #df, overlapping_criterium = criterium_overlapping(self.df, "%H:%M:%S")
-        a, class_requisites_criterium = criterium_class_requisites(df, self.class_room_dictionary)
+        a, class_requisites_criterium = criterium_class_requisites(self.df, self.class_room_dictionary)
         
         # Funções objetivo
         objectives = [
@@ -299,13 +299,16 @@ class TimetableProblem(PermutationSolution):
     def create_solution(self) -> PermutationSolution:
         new_solution = PermutationSolution(self.number_of_variables, self.number_of_objectives)
         
-        all_slots = []
-        for start_time in self.df['Início'].unique():
-            end_time = self.df[self.df['Início'] == start_time]['Fim'].iloc[0]  # Assuming consistent end times
-            for room in self.class_room_dictionary.keys():
-                all_slots.append((start_time, end_time, room))
+        rooms = list(self.class_room_dictionary.keys())
 
-        new_solution.variables = random.sample(all_slots, self.number_of_courses)
+        assignments = []
+        for _ in range(self.number_of_variables):
+            room = random.choice(rooms)
+            assignments.append(room)
+        
+        # Set the generated assignments as the solution's variables
+        new_solution.variables = assignments
+
         return new_solution
 
 @app.route('/process', methods=['POST'])
@@ -314,7 +317,14 @@ def optimize():
     selected_schedule_data = data['selectedScheduleData']
     class_room_dictionary = data['classRoomDictionary']
     carateristicas_Salas = data['carateristicasSalas']
-    print(carateristicas_Salas)
+
+    for sala in carateristicas_Salas['data']:
+        nome_sala = sala['Nome sala']
+        capacidade_normal = sala['Capacidade Normal']
+        if nome_sala in class_room_dictionary:
+            class_room_dictionary[nome_sala].append('Capacidade Normal: ' + capacidade_normal)
+
+    print(class_room_dictionary)
 
     df = pd.DataFrame(selected_schedule_data)
     print("")
