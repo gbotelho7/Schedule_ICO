@@ -4,10 +4,11 @@ from flask_cors import CORS
 import numpy as np
 import pandas as pd
 from jmetal.algorithm.multiobjective.nsgaii import NSGAII
-from jmetal.operator import SBXCrossover, PolynomialMutation
+from jmetal.operator import PMXCrossover, PermutationSwapMutation
 from jmetal.util.termination_criterion import StoppingByEvaluations
 from jmetal.core.problem import Problem
 from jmetal.core.solution import PermutationSolution
+from jmetal.util.observer import ProgressBarObserver
 import random
 
 app = Flask(__name__)
@@ -276,8 +277,21 @@ class TimetableProblem(PermutationSolution):
 
             room_details = self.class_room_dictionary[room]
             #print(room_details)
-            df.at[i, 'Lotação'] = room_details.get('Capacidade Normal')
-            df.at[i, 'Características reais da sala'] = {k: v for k, v in room_details.items() if k != 'Capacidade Normal'}
+            capacity = None
+            characteristics = []
+
+            # Extracting capacity and other characteristics
+            for detail in room_details:
+                if detail.startswith('Capacidade Normal:'):
+                    capacity = int(detail.split(': ')[1])
+                else:
+                    characteristics.append(detail)
+
+            #print(characteristics)
+            #print(capacity)
+            # Assigning values to DataFrame
+            df.at[i, 'Lotação'] = capacity
+            df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
 
         self.df = df
         # Calcular critérios
@@ -324,11 +338,11 @@ def optimize():
         if nome_sala in class_room_dictionary:
             class_room_dictionary[nome_sala].append('Capacidade Normal: ' + capacidade_normal)
 
-    print(class_room_dictionary)
+    #print(class_room_dictionary)
 
     df = pd.DataFrame(selected_schedule_data)
     print("")
-    print(df.head(1))
+    #print(df.head(1))
     print("")
     problem = TimetableProblem(df, class_room_dictionary)
 
@@ -336,10 +350,13 @@ def optimize():
         problem=problem,
         population_size=10,
         offspring_population_size=10,
-        mutation=PolynomialMutation(probability=0.1, distribution_index=20),
-        crossover=SBXCrossover(probability=0.9, distribution_index=20),
+        mutation=PermutationSwapMutation(probability=0.1),
+        crossover=PMXCrossover(probability=0.9),
         termination_criterion=StoppingByEvaluations(max_evaluations=100)
     )
+
+    progress_bar = ProgressBarObserver(max=100)
+    algorithm.observable.register(progress_bar)
 
     algorithm.run()
 
