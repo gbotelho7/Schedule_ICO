@@ -64,8 +64,8 @@ class RoomAssignmentProblem(PermutationProblem):
         return solution
 
 # Assuming rooms_df and schedule_df are your DataFrames with the necessary data
-schedule_df = pd.read_csv('testeHorario.csv', delimiter=';')
-rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';')
+schedule_df = pd.read_csv('testeHorario.csv', delimiter=';', encoding="utf-8")
+rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
 
 problem = RoomAssignmentProblem(rooms_df, schedule_df)
 
@@ -94,3 +94,27 @@ solution = algorithm.get_result()
 
 print('Solution:', solution.variables)
 print('Objectives:', solution.objectives)
+
+import pandas as pd
+
+# Assuming 'solution' is the obtained solution from the genetic algorithm
+room_assignments = solution.variables
+
+# Create an empty list to store the rows
+assigned_rooms_rows = []
+
+# Map room assignments to class schedule
+for i, room_index in enumerate(room_assignments):
+    class_info = schedule_df.iloc[i]
+    room_info = rooms_df.iloc[room_index]
+
+    # Create a new row with class info and assigned room info
+    new_row = pd.concat([class_info, room_info], ignore_index=True)
+    assigned_rooms_rows.append(new_row)
+
+# Create a DataFrame from the list of rows
+assigned_rooms_df = pd.concat(assigned_rooms_rows, axis=1).transpose()
+
+# Save the assigned rooms DataFrame to a CSV file
+assigned_rooms_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
+
