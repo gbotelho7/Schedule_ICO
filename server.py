@@ -4,10 +4,10 @@ from flask_cors import CORS
 import numpy as np
 import pandas as pd
 from jmetal.algorithm.multiobjective.nsgaii import NSGAII
-from jmetal.core.solution import FloatSolution
 from jmetal.operator import SBXCrossover, PolynomialMutation
 from jmetal.util.termination_criterion import StoppingByEvaluations
 from jmetal.core.problem import Problem
+from jmetal.core.solution import PermutationSolution
 import random
 
 app = Flask(__name__)
@@ -254,38 +254,36 @@ def process_message():
     #selected_schedule_data_df, textCriteriaResults = evaluate_dynamic_text_criteria(selected_schedule_data_df, text_criterium_list)
     #print(textCriteriaResults)
 
-class TimetableProblem(Problem):
+class TimetableProblem(PermutationSolution):
     def __init__(self, df: pd.DataFrame, class_room_dictionary: dict):
         super(TimetableProblem, self).__init__()
         self.df = df
         self.class_room_dictionary = class_room_dictionary
-        self._number_of_variables = df.shape[0] * df.shape[1]
-        self._number_of_objectives = 4
-        self._number_of_constraints = 0
-        self.lower_bound = [0.0] * self._number_of_variables
-        self.upper_bound = [1.0] * self._number_of_variables
+        self.number_of_courses = len(df)
+        self.number_of_time_slots = len(df['Início'].unique())
+        self.number_of_rooms = len(class_room_dictionary)
+        self.number_of_variables = self.number_of_courses
+        self.number_of_objectives = 3
+        self.number_of_constraints = 0
 
-    @property
-    def number_of_variables(self):
-        return self._number_of_variables
-
-    @property
-    def number_of_objectives(self):
-        return self._number_of_objectives
-
-    @property
-    def number_of_constraints(self):
-        return self._number_of_constraints
+        self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
+        self.obj_labels = ['overcrowding', 'ma_atribuição', 'sem_sala']
 
     @property
     def name(self):
         return 'TimetableProblem'
 
-    def evaluate(self, solution: FloatSolution) -> FloatSolution:
+    def evaluate(self, solution: PermutationSolution) -> PermutationSolution:
+        df = self.df.copy()
+        assignments = solution.variables
+        for i, (time_slot, room) in enumerate(assignments):
+            df.at[i, 'Início'], df.at[i, 'Fim'] = time_slot
+            df.at[i, 'Sala da aula'] = room
+
         # Calcular critérios
-        df, overcrowding_criterium = criterium_overcrowding(self.df)
+        a, overcrowding_criterium = criterium_overcrowding(df)
         #df, overlapping_criterium = criterium_overlapping(self.df, "%H:%M:%S")
-        df, class_requisites_criterium = criterium_class_requisites(self.df, self.class_room_dictionary)
+        a, class_requisites_criterium = criterium_class_requisites(df, self.class_room_dictionary)
         
         # Funções objetivo
         objectives = [
@@ -295,45 +293,19 @@ class TimetableProblem(Problem):
             class_requisites_criterium['Aulas Sem Sala']
         ]
         
-        solution.objectives = objectives[:self.number_of_objectives]  # Adjust the objectives based on the defined number
+        solution.objectives = objectives
         return solution
 
-    def create_solution(self) -> FloatSolution:
-        new_solution = FloatSolution(self.lower_bound, self.upper_bound, self.number_of_objectives)
+    def create_solution(self) -> PermutationSolution:
+        new_solution = PermutationSolution(self.number_of_variables, self.number_of_objectives)
+        
+        all_slots = []
+        for start_time in self.df['Início'].unique():
+            end_time = self.df[self.df['Início'] == start_time]['Fim'].iloc[0]  # Assuming consistent end times
+            for room in self.class_room_dictionary.keys():
+                all_slots.append((start_time, end_time, room))
 
-        # Load room characteristics from CSV
-        room_characteristics_df = pd.read_csv('CaracterizaçãoDasSalas.csv')
-        
-        # Function to find suitable rooms based on class requirements
-        def find_suitable_rooms(class_requirements):
-            suitable_rooms = []
-            for index, row in room_characteristics_df.iterrows():
-                room_characteristics = row['Características reais da sala'].split(';')  # Assuming characteristics are semi-colon separated
-                if all(req in room_characteristics for req in class_requirements.split(';')):
-                    suitable_rooms.append(row['Nome sala'])
-            return suitable_rooms
-
-        num_rows, num_cols = self.df.shape
-        
-        variables = []
-        
-        for index, row in self.df.iterrows():
-            class_requirements = row['Características da sala pedida para a aula']
-            suitable_rooms = find_suitable_rooms(class_requirements)
-            
-            if suitable_rooms:
-                chosen_room = random.choice(suitable_rooms)
-            else:
-                chosen_room = "No suitable room"
-            
-            # Append the chosen room or its index to the solution variables
-            variables.append(chosen_room)
-            
-            # Optionally, update the DataFrame with the assigned room
-            self.df.at[index, 'Sala da aula'] = chosen_room
-        
-        new_solution.variables = variables
-        
+        new_solution.variables = random.sample(all_slots, self.number_of_courses)
         return new_solution
 
 @app.route('/process', methods=['POST'])
@@ -341,12 +313,6 @@ def optimize():
     data = request.get_json()
     selected_schedule_data = data['selectedScheduleData']
     class_room_dictionary = data['classRoomDictionary']
-    hour_format = data['hourFormat']
-    date_format = data['dateFormat']
-
-    hour_format = convert_js_format_to_python(hour_format)
-    date_format = convert_js_format_to_python(date_format)
-
 
     df = pd.DataFrame(selected_schedule_data)
     print("")
@@ -367,16 +333,11 @@ def optimize():
 
     result = algorithm.get_result()
 
-    """ for solution in result:
+    for solution in result:
         print(f'Solution: {solution.variables}')
-        print(f'Objectives: {solution.objectives}') """
+        print(f'Objectives: {solution.objectives}')
 
-    best_solution = result[0].variables
-    optimized_timetable = pd.DataFrame(
-    [best_solution[i:i+df.shape[1]] for i in range(0, len(best_solution), df.shape[1])],
-    columns=df.columns
-    )
-    print(optimized_timetable)
+    #print(result)
 
 if __name__ == '__main__':
     app.run(debug=True)
