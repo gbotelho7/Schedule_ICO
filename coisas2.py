@@ -2,9 +2,10 @@ import random
 import pandas as pd
 from jmetal.core.problem import IntegerProblem
 from jmetal.core.solution import IntegerSolution
-from jmetal.operator import PMXCrossover, IntegerPolynomialMutation, CXCrossover
+from jmetal.operator import PMXCrossover, IntegerPolynomialMutation, CXCrossover, NullCrossover
 from jmetal.algorithm.singleobjective.genetic_algorithm import GeneticAlgorithm
 from jmetal.algorithm.multiobjective.nsgaii import NSGAII
+from jmetal.operator.crossover import IntegerSBXCrossover
 from jmetal.util.observer import ProgressBarObserver
 from jmetal.util.termination_criterion import StoppingByEvaluations
 
@@ -100,7 +101,8 @@ rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="
 problem = RoomAssignmentProblem(rooms_df, schedule_df)
 
 # Define the crossover and mutation operators
-crossover_operator = CXCrossover(probability=0.8)
+# crossover_operator = CXCrossover(probability=0.8)
+crossover_operator = IntegerSBXCrossover(probability=0.8)
 mutation_operator = IntegerPolynomialMutation(probability=0.2)
 
 # Define the algorithm
@@ -110,10 +112,10 @@ algorithm = NSGAII(
     offspring_population_size=10,
     mutation=mutation_operator,
     crossover=crossover_operator,
-    termination_criterion=StoppingByEvaluations(max_evaluations=10)
+    termination_criterion=StoppingByEvaluations(max_evaluations=200)
 )
 
-progress_bar = ProgressBarObserver(max=10)
+progress_bar = ProgressBarObserver(max=200)
 algorithm.observable.register(progress_bar)
 
 # Run the algorithm
