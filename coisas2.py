@@ -70,7 +70,7 @@ class RoomAssignmentProblem(IntegerProblem):
 
 
 # Assuming rooms_df and schedule_df are your DataFrames with the necessary data
-schedule_df = pd.read_csv('HorarioDeExemplo - Copy (2).csv', delimiter=';', encoding="utf-8")
+schedule_df = pd.read_csv('HorarioDeExemplo - Copy.csv', delimiter=';', encoding="utf-8")
 rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
 
 problem = RoomAssignmentProblem(rooms_df, schedule_df)
@@ -114,9 +114,11 @@ for i, room_index in enumerate(room_assignments):
         if column != 'Nº características' and not pd.isna(room_info[column]) and room_info[column] != '':
             characteristics.append(column)
 
-    schedule_df.at[i, 'Sala'] = room_name  # Replace 'Sala da aula' with the room name
-    schedule_df.at[i, 'Lotação'] = capacity
+    schedule_df.at[i, 'Sala da aula'] = room_name  # Replace 'Sala da aula' with the room name
+    schedule_df.at[i, 'Lotação'] = int(capacity)
     schedule_df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
+
+schedule_df['Lotação'] = schedule_df['Lotação'].astype(int)
 
 # Save the assigned rooms DataFrame to a CSV file
 schedule_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
