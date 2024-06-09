@@ -406,7 +406,7 @@ function evaluateDynamicFormulaCriterium(schedulesData, expression) {
   });
   console.log(errorCounter)
   if (errorCounter == Object.keys(schedulesData).length) {
-    alert("Ocorreu um erro e por isso não foram adicionados novos critérios por favor corriga a formula!")
+    alert("Ocorreu um erro e por isso não foram adicionados novos critérios por favor corrija a formula!")
   }
   return schedulesData
 
