@@ -1,14 +1,14 @@
 import random
 import pandas as pd
-from jmetal.core.problem import PermutationProblem
-from jmetal.core.solution import PermutationSolution
-from jmetal.operator import PMXCrossover, PermutationSwapMutation, CXCrossover
+from jmetal.core.problem import IntegerProblem
+from jmetal.core.solution import IntegerSolution
+from jmetal.operator import PMXCrossover, IntegerPolynomialMutation, CXCrossover
 from jmetal.algorithm.singleobjective.genetic_algorithm import GeneticAlgorithm
 from jmetal.util.observer import ProgressBarObserver
 from jmetal.util.termination_criterion import StoppingByEvaluations
 
 
-class RoomAssignmentProblem(PermutationProblem):
+class RoomAssignmentProblem(IntegerProblem):
     def name(self) -> str:
         return 'Room Assignment Problem'
 
@@ -33,7 +33,7 @@ class RoomAssignmentProblem(PermutationProblem):
         self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
         self.obj_labels = ['Total Distance', 'Balance Usage']
 
-    def evaluate(self, solution: PermutationSolution):
+    def evaluate(self, solution: IntegerSolution):
         total_distance = 0
         room_usage = [0] * len(self.rooms_df)
 
@@ -54,27 +54,22 @@ class RoomAssignmentProblem(PermutationProblem):
         solution.objectives[0] = total_distance
         solution.objectives[1] = balance_usage
 
-    def create_solution(self):
-        solution = PermutationSolution(
-            number_of_variables=self.number_of_variables,
+    def create_solution(self) -> IntegerSolution:
+        solution = IntegerSolution(
             number_of_objectives=self.number_of_objectives,
-            number_of_constraints=self.number_of_constraints
+            number_of_constraints=self.number_of_constraints,
+            lower_bound=[0] * self.number_of_variables,  # Lower bound for each variable
+            upper_bound=[len(self.rooms_df) - 1] * self.number_of_variables  # Upper bound for each variable
         )
 
-        if self.number_of_variables > len(self.rooms_df):
-            # Repeat room indices to match the number of variables
-            repeated_rooms = (list(range(len(self.rooms_df))) * (self.number_of_variables // len(self.rooms_df) + 1))[
-                             :self.number_of_variables]
-            solution.variables = random.sample(repeated_rooms, self.number_of_variables)
-        else:
-            solution.variables = random.sample(range(len(self.rooms_df)), self.number_of_variables)
+        # Random initialization within bounds
+        for i in range(self.number_of_variables):
+            solution.variables[i] = random.randint(0, len(self.rooms_df) - 1)
 
-        # print(solution.variables)
         return solution
 
 
 # Assuming rooms_df and schedule_df are your DataFrames with the necessary data
-# schedule_df = pd.read_csv('testeHorario.csv', delimiter=';', encoding="utf-8")
 schedule_df = pd.read_csv('HorarioDeExemplo - Copy (2).csv', delimiter=';', encoding="utf-8")
 rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
 
@@ -82,7 +77,7 @@ problem = RoomAssignmentProblem(rooms_df, schedule_df)
 
 # Define the crossover and mutation operators
 crossover_operator = CXCrossover(probability=0.8)
-mutation_operator = PermutationSwapMutation(probability=0.2)
+mutation_operator = IntegerPolynomialMutation(probability=0.2)
 
 # Define the algorithm
 algorithm = GeneticAlgorithm(
@@ -108,7 +103,6 @@ print('Objectives:', solution.objectives)
 
 # Assuming 'solution' is the obtained solution from the genetic algorithm
 room_assignments = solution.variables
-
 
 for i, room_index in enumerate(room_assignments):
     room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
