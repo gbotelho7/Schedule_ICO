@@ -13,7 +13,7 @@ class RoomAssignmentProblem(IntegerProblem):
         return 'Room Assignment Problem'
 
     def number_of_constraints(self) -> int:
-        return 0
+        return self.number_of_constraints
 
     def number_of_objectives(self) -> int:
         return self.number_of_objectives
@@ -105,15 +105,18 @@ print('Objectives:', solution.objectives)
 room_assignments = solution.variables
 
 for i, room_index in enumerate(room_assignments):
+    room_info = rooms_df.iloc[room_index]
     room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
     capacity = rooms_df.iloc[room_index]['Capacidade Normal']
 
-    schedule_df.at[i, 'Sala da aula'] = room_name  # Replace 'Sala da aula' with the room name
+    characteristics = []
+    for column in rooms_df.columns[4:]:
+        if column != 'Nº características' and not pd.isna(room_info[column]) and room_info[column] != '':
+            characteristics.append(column)
+
+    schedule_df.at[i, 'Sala'] = room_name  # Replace 'Sala da aula' with the room name
     schedule_df.at[i, 'Lotação'] = capacity
-
-# Save the modified schedule_df DataFrame to a CSV file
-schedule_df.to_csv('modified_schedule.csv', index=False, sep=';', encoding="utf-8")
-
+    schedule_df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
 
 # Save the assigned rooms DataFrame to a CSV file
 schedule_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
