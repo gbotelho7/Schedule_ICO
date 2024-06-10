@@ -8,20 +8,25 @@ from jmetal.algorithm.multiobjective.nsgaii import NSGAII
 from jmetal.operator.crossover import IntegerSBXCrossover
 from jmetal.util.observer import ProgressBarObserver
 from jmetal.util.termination_criterion import StoppingByEvaluations
+from jmetal.algorithm.multiobjective.smpso import SMPSO
+from jmetal.util.archive import CrowdingDistanceArchive
+
 
 
 class RoomAssignmentProblem(IntegerProblem):
+
     def name(self) -> str:
         return 'Room Assignment Problem'
 
-    def number_of_constraints(self) -> int:
+    def number_of_constraints(self):
         return self.number_of_constraints
 
-    def number_of_objectives(self) -> int:
+    def number_of_objectives(self):
         return self.number_of_objectives
 
-    def number_of_variables(self) -> int:
+    def number_of_variables(self):
         return self.number_of_variables
+
 
     def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame):
         super(RoomAssignmentProblem, self).__init__()
@@ -36,9 +41,13 @@ class RoomAssignmentProblem(IntegerProblem):
         self.number_of_objectives = 3  # Example: minimize distance, balance usage
         self.number_of_constraints = 0  # No constraints
 
-        self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
+        self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
         # self.obj_labels = ['Total Distance', 'Balance Usage']
         self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements']
+
+
+
+
 
     def evaluate(self, solution: IntegerSolution):
         overcapacity_count = 0
@@ -75,9 +84,12 @@ class RoomAssignmentProblem(IntegerProblem):
                     unmet_requirements_count += 1
                     break
 
+            
+
         solution.objectives[0] = overcapacity_count
         solution.objectives[1] = overlap_count
         solution.objectives[2] = unmet_requirements_count
+        
 
     def create_solution(self) -> IntegerSolution:
         solution = IntegerSolution(
@@ -106,7 +118,7 @@ crossover_operator = IntegerSBXCrossover(probability=0.8)
 mutation_operator = IntegerPolynomialMutation(probability=0.2)
 
 # Define the algorithm
-algorithm = NSGAII(
+algorithm_NSGAII = NSGAII(
     problem=problem,
     population_size=10,
     offspring_population_size=10,
@@ -115,23 +127,61 @@ algorithm = NSGAII(
     termination_criterion=StoppingByEvaluations(max_evaluations=200)
 )
 
+# Define the algorithm
+algorithm_Genetic = GeneticAlgorithm(
+    problem=problem,
+    population_size=10,
+    offspring_population_size=10,
+    mutation=mutation_operator,
+    crossover=crossover_operator,
+    termination_criterion=StoppingByEvaluations(max_evaluations=200)
+)
+
+
+
+
+# progress_bar = ProgressBarObserver(max=200)
+# algorithm_NSGAII.observable.register(progress_bar)
+
+# # Run the algorithm
+# algorithm_NSGAII.run()
+
+# # Get the results
+# solutions_NSGAII = algorithm_NSGAII.get_result()
+
+# # Process the solutions
+# for solution in solutions_NSGAII:
+#     print('Solution:', solution.variables)
+#     print('Objectives:', solution.objectives)
+
+# # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
+# solution_NSGAII = solutions_NSGAII[0]
+# room_assignments = solution_NSGAII.variables
+
+
+
+
 progress_bar = ProgressBarObserver(max=200)
-algorithm.observable.register(progress_bar)
+algorithm_Genetic.observable.register(progress_bar)
 
 # Run the algorithm
-algorithm.run()
+algorithm_Genetic.run()
 
 # Get the results
-solutions = algorithm.get_result()
+solutions_Genetic = algorithm_Genetic.get_result()
 
 # Process the solutions
-for solution in solutions:
-    print('Solution:', solution.variables)
-    print('Objectives:', solution.objectives)
+
+print('Solution:', solutions_Genetic.variables)
+print('Objectives:', solutions_Genetic.objectives)
 
 # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
-solution = solutions[0]
-room_assignments = solution.variables
+solution_Genetic = solutions_Genetic
+room_assignments = solution_Genetic.variables
+
+
+
+
 
 for i, room_index in enumerate(room_assignments):
     room_info = rooms_df.iloc[room_index]
