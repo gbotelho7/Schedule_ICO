@@ -151,3 +151,13 @@ schedule_df['Lotação'] = schedule_df['Lotação'].astype(int)
 
 # Save the assigned rooms DataFrame to a CSV file
 schedule_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
+
+
+with open('assigned_rooms.csv', 'r', encoding='utf-8') as file:
+    lines = file.readlines()
+
+if lines:
+    lines[-1] = lines[-1].rstrip('\n')
+
+with open('assigned_rooms.csv', 'w', encoding='utf-8') as file:
+    file.writelines(lines)
