@@ -52,6 +52,7 @@ function handleParsedData(results, index, e, hiddenDiv, classroomsInput) {
     if (hiddenDiv.style.display === "block" && classroomsInput) {
       hiddenDiv.style.display = "none"
     }
+    scheduleOptimization.style.display = "none"
     dynamicCriteriums.style.display = "none"
     heatmapContainer.innerHTML = ""
     chartContainer.innerHTML = ""
@@ -195,6 +196,39 @@ function handleSwitch(input1, input2, toggleSwitch, fileInput) {
 
     input2.style.display = "none"
   }
+}
+
+let selectedOtimizationType = null;
+let selectedSingleObjectiveCriterium = null;
+
+function handleOtimizationSwitch() {
+  var isChecked = document.getElementById('toggleSwitch3').checked;
+  var multiObjectiveCriteria = document.getElementById('multiObjectiveCriteria');
+  var singleObjectiveCriteria = document.getElementById('singleObjectiveCriteria');
+
+  selectedOtimizationType = null
+  selectedSingleObjectiveCriterium = null
+
+  console.log("entrou no handle otimization")
+  selectedOtimizationType = "multi";
+  multiObjectiveCriteria.style.display = 'block';
+  singleObjectiveCriteria.style.display = 'none';
+
+  if (isChecked) {
+    selectedOtimizationType = "single";
+    multiObjectiveCriteria.style.display = 'none';
+    singleObjectiveCriteria.style.display = 'block';
+    selectedSingleObjectiveCriterium = document.getElementById('criteriaDropdown').value;
+    console.log('criterio selecionado', selectedSingleObjectiveCriterium)
+  }
+  console.log(selectedOtimizationType)
+  console.log(selectedSingleObjectiveCriterium)
+}
+
+
+function handleCriteriaChange() {
+  var dropdown = document.getElementById('criteriaDropdown');
+  selectedSingleObjectiveCriterium = dropdown.value;
 }
 
 
@@ -611,22 +645,23 @@ function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDiction
   console.log(dateFormat)
   document.getElementById('sendButton').addEventListener('click', function() {
 
-    fetch('http://127.0.0.1:5000/process', {
+    fetch('http://127.0.0.1:5000/optimize', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, carateristicasSalas: carateristicasSalas})
+        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, carateristicasSalas: carateristicasSalas, selectedOtimizationType: selectedOtimizationType, selectedSingleObjectiveCriterium: selectedSingleObjectiveCriterium})
     })
     .then(response => response.json())
     .then(data => {
-      const criteriums = data["criteriums"];
+      // const criteriums = data["criteriums"];
+      const dummy = data["dummy"]
   
-      responseHtml = "<p><strong>Resultados do cálculo:</strong></p>";
-      // responseHtml += "<p>Critério Dinâmico formula: " + criteriums["Contagem critério dinâmico formula"] + "</p>";
-      responseHtml += "</ul>";
-      responseHtml += "<p><strong>Resultados do cálculo:</strong></p>";
-      responseHtml += "<p>Sobrelotações: " + criteriums["Sobrelotações"] + "</p>";
+      // responseHtml = "<p><strong>Resultados do cálculo:</strong></p>";
+      // // responseHtml += "<p>Critério Dinâmico formula: " + criteriums["Contagem critério dinâmico formula"] + "</p>";
+      // responseHtml += "</ul>";
+      // responseHtml += "<p><strong>Resultados do cálculo:</strong></p>";
+      // responseHtml += "<p>Sobrelotações: " + criteriums["Sobrelotações"] + "</p>";
       // responseHtml += "<p>Alunos a mais (Sobrelotações): " + criteriums["Alunos a mais (Sobrelotações)"] + "</p>";
       // //responseHtml += "<p>Sobreposições: " + criteriums["Sobreposições"] + "</p>";
       // responseHtml += "<p>Requisitos não cumpridos: " + criteriums["Requisitos não cumpridos"] + "</p>";
@@ -690,6 +725,7 @@ function createTabulator(schedulesData, heatmapContainer, downloadContainer, mod
       createRequisitesChart(selectedScheduleData)
       modifiableDataTabulator = createModifiableTabulator(selectedScheduleData, elementList)
       insertDownloadButton(downloadContainer, selectedScheduleData, elementList);
+      scheduleOptimization.style.display = "block"
       sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList, carateristicasSalas)
     }
     else {
@@ -697,6 +733,7 @@ function createTabulator(schedulesData, heatmapContainer, downloadContainer, mod
       downloadContainer.innerHTML = ""
       modifiableTabulator.innerHTML = ""
       heatmapFilter.innerHTML = ""
+      scheduleOptimization.style.display = "none"
       graphs.forEach(graph => {
         graph.innerHTML = '';
       });

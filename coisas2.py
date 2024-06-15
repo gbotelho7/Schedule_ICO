@@ -1,4 +1,6 @@
 import random
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import pandas as pd
 from jmetal.core.problem import IntegerProblem
 from jmetal.core.solution import IntegerSolution
@@ -10,6 +12,8 @@ from jmetal.util.observer import ProgressBarObserver
 from jmetal.util.termination_criterion import StoppingByEvaluations
 from jmetal.algorithm.multiobjective.smpso import SMPSO
 from jmetal.util.archive import CrowdingDistanceArchive
+app = Flask(__name__)
+CORS(app)
 
 
 
@@ -104,110 +108,124 @@ class RoomAssignmentProblem(IntegerProblem):
             solution.variables[i] = random.randint(0, len(self.rooms_df) - 1)
 
         return solution
+    
+@app.route('/optimize', methods=['POST'])
+def optimizeSchedule():
+    data = request.get_json()
+    selected_SingleObjective_Criterium = data['selectedSingleObjectiveCriterium']
+    print(selected_SingleObjective_Criterium)
+    selected_Otimization_Type = data['selectedOtimizationType']
+    print(selected_Otimization_Type)
+
+    ## APAGAR LIXO
+    return jsonify({"dummy": "ola"})
 
 
-# Assuming rooms_df and schedule_df are your DataFrames with the necessary data
-schedule_df = pd.read_csv('HorarioDeExemplo - Copy.csv', delimiter=';', encoding="utf-8")
-rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
+    # # Assuming rooms_df and schedule_df are your DataFrames with the necessary data
+    # schedule_df = pd.read_csv('HorarioDeExemplo - Copy.csv', delimiter=';', encoding="utf-8")
+    # rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
 
-problem = RoomAssignmentProblem(rooms_df, schedule_df)
+    # problem = RoomAssignmentProblem(rooms_df, schedule_df)
 
-# Define the crossover and mutation operators
-# crossover_operator = CXCrossover(probability=0.8)
-crossover_operator = IntegerSBXCrossover(probability=0.8)
-mutation_operator = IntegerPolynomialMutation(probability=0.2)
+    # # Define the crossover and mutation operators
+    # # crossover_operator = CXCrossover(probability=0.8)
+    # crossover_operator = IntegerSBXCrossover(probability=0.8)
+    # mutation_operator = IntegerPolynomialMutation(probability=0.2)
 
-# Define the algorithm
-algorithm_NSGAII = NSGAII(
-    problem=problem,
-    population_size=10,
-    offspring_population_size=10,
-    mutation=mutation_operator,
-    crossover=crossover_operator,
-    termination_criterion=StoppingByEvaluations(max_evaluations=200)
-)
+    # # Define the algorithm
+    # algorithm_NSGAII = NSGAII(
+    #     problem=problem,
+    #     population_size=10,
+    #     offspring_population_size=10,
+    #     mutation=mutation_operator,
+    #     crossover=crossover_operator,
+    #     termination_criterion=StoppingByEvaluations(max_evaluations=200)
+    # )
 
-# Define the algorithm
-algorithm_Genetic = GeneticAlgorithm(
-    problem=problem,
-    population_size=10,
-    offspring_population_size=10,
-    mutation=mutation_operator,
-    crossover=crossover_operator,
-    termination_criterion=StoppingByEvaluations(max_evaluations=200)
-)
-
-
-
-
-# progress_bar = ProgressBarObserver(max=200)
-# algorithm_NSGAII.observable.register(progress_bar)
-
-# # Run the algorithm
-# algorithm_NSGAII.run()
-
-# # Get the results
-# solutions_NSGAII = algorithm_NSGAII.get_result()
-
-# # Process the solutions
-# for solution in solutions_NSGAII:
-#     print('Solution:', solution.variables)
-#     print('Objectives:', solution.objectives)
-
-# # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
-# solution_NSGAII = solutions_NSGAII[0]
-# room_assignments = solution_NSGAII.variables
+    # # Define the algorithm
+    # algorithm_Genetic = GeneticAlgorithm(
+    #     problem=problem,
+    #     population_size=10,
+    #     offspring_population_size=10,
+    #     mutation=mutation_operator,
+    #     crossover=crossover_operator,
+    #     termination_criterion=StoppingByEvaluations(max_evaluations=200)
+    # )
 
 
 
 
-progress_bar = ProgressBarObserver(max=200)
-algorithm_Genetic.observable.register(progress_bar)
+    # # progress_bar = ProgressBarObserver(max=200)
+    # # algorithm_NSGAII.observable.register(progress_bar)
 
-# Run the algorithm
-algorithm_Genetic.run()
+    # # # Run the algorithm
+    # # algorithm_NSGAII.run()
 
-# Get the results
-solutions_Genetic = algorithm_Genetic.get_result()
+    # # # Get the results
+    # # solutions_NSGAII = algorithm_NSGAII.get_result()
 
-# Process the solutions
+    # # # Process the solutions
+    # # for solution in solutions_NSGAII:
+    # #     print('Solution:', solution.variables)
+    # #     print('Objectives:', solution.objectives)
 
-print('Solution:', solutions_Genetic.variables)
-print('Objectives:', solutions_Genetic.objectives)
-
-# Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
-solution_Genetic = solutions_Genetic
-room_assignments = solution_Genetic.variables
-
-
+    # # # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
+    # # solution_NSGAII = solutions_NSGAII[0]
+    # # room_assignments = solution_NSGAII.variables
 
 
 
-for i, room_index in enumerate(room_assignments):
-    room_info = rooms_df.iloc[room_index]
-    room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
-    capacity = rooms_df.iloc[room_index]['Capacidade Normal']
 
-    characteristics = []
-    for column in rooms_df.columns[4:]:
-        if column != 'Nº características' and not pd.isna(room_info[column]) and room_info[column] != '':
-            characteristics.append(column)
+    # progress_bar = ProgressBarObserver(max=200)
+    # algorithm_Genetic.observable.register(progress_bar)
 
-    schedule_df.at[i, 'Sala da aula'] = room_name  # Replace 'Sala da aula' with the room name
-    schedule_df.at[i, 'Lotação'] = int(capacity)
-    schedule_df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
+    # # Run the algorithm
+    # algorithm_Genetic.run()
 
-schedule_df['Lotação'] = schedule_df['Lotação'].astype(int)
+    # # Get the results
+    # solutions_Genetic = algorithm_Genetic.get_result()
 
-# Save the assigned rooms DataFrame to a CSV file
-schedule_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
+    # # Process the solutions
+
+    # print('Solution:', solutions_Genetic.variables)
+    # print('Objectives:', solutions_Genetic.objectives)
+
+    # # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
+    # solution_Genetic = solutions_Genetic
+    # room_assignments = solution_Genetic.variables
 
 
-with open('assigned_rooms.csv', 'r', encoding='utf-8') as file:
-    lines = file.readlines()
 
-if lines:
-    lines[-1] = lines[-1].rstrip('\n')
 
-with open('assigned_rooms.csv', 'w', encoding='utf-8') as file:
-    file.writelines(lines)
+
+    # for i, room_index in enumerate(room_assignments):
+    #     room_info = rooms_df.iloc[room_index]
+    #     room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
+    #     capacity = rooms_df.iloc[room_index]['Capacidade Normal']
+
+    #     characteristics = []
+    #     for column in rooms_df.columns[4:]:
+    #         if column != 'Nº características' and not pd.isna(room_info[column]) and room_info[column] != '':
+    #             characteristics.append(column)
+
+    #     schedule_df.at[i, 'Sala da aula'] = room_name  # Replace 'Sala da aula' with the room name
+    #     schedule_df.at[i, 'Lotação'] = int(capacity)
+    #     schedule_df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
+
+    # schedule_df['Lotação'] = schedule_df['Lotação'].astype(int)
+
+    # # Save the assigned rooms DataFrame to a CSV file
+    # schedule_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
+
+
+    # with open('assigned_rooms.csv', 'r', encoding='utf-8') as file:
+    #     lines = file.readlines()
+
+    # if lines:
+    #     lines[-1] = lines[-1].rstrip('\n')
+
+    # with open('assigned_rooms.csv', 'w', encoding='utf-8') as file:
+    #     file.writelines(lines)
+
+if __name__ == '__main__':
+    app.run(debug=True)

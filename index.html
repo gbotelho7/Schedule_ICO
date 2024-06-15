@@ -327,13 +327,51 @@
     <h4 id="h4-download">Pode fazer o Download do conteúdo da tabela acima nos seguintes formatos</h4>
     <div id="download-container"></div>
     <br>
+    
 
-    <h1>Comunicação HTML-Python</h1>
-    <button id="sendButton">Enviar Mensagem</button>
-    <p id="response"></p>
+    <div id="schedule-otimization" style="display: none;">
+      <h1>Otimização de horários</h1>
+      <div id="avaliableOptimizationCriteriums"><p>Critérios disponíveis:</p>
+      <ul id="avaliableOptimizationCriteriums">
+        <li>Sobrelotações</li>
+        <li>Alunos a mais (sobrelotações)</li>
+        <li>Sobreposições</li>
+        <li>Requisitos não cumpridos</li>
+        <li>Aulas sem sala</li>
+      </ul>
+      </div>
+      <br>
+      Otimização multi-objetivo
+      <label class="switch">
+        <input type="checkbox" id="toggleSwitch3" onclick="handleOtimizationSwitch()">
+        <span class="slider"></span>
+      </label>
+      Otimização de objetivo único
+      <br>
+      <div id="multiObjectiveCriteria">
+      </div>
+      <div id="singleObjectiveCriteria" style="display: none;">
+        <label for="criteriaDropdown">Escolha um critério:</label>
+        <select id="criteriaDropdown" onchange="handleCriteriaChange(), handleOtimizationSwitch()">
+          <option value="Sobrelotações">Sobrelotações</option>
+          <option value="Alunos a mais">Alunos a mais (sobrelotações)</option>
+          <option value="Sobreposições">Sobreposições</option>
+          <option value="Requisitos não cumpridos">Requisitos não cumpridos</option>
+          <option value="Aulas sem sala">Aulas sem sala</option>
+        </select>
+      </div>
+      <br>
+      <button id="sendButton" onclick="handleOtimizationSwitch()">Otimizar horário</button>
+      <p id="response"></p>
+    </div>
 
   
   <script>
+
+    
+  
+
+    
 
     const showFormButton = document.getElementById("show-form-button");
     const parseButton = document.getElementById("parseButton");
@@ -349,6 +387,7 @@
 
     const toggleSwitch1 = document.getElementById('toggleSwitch1');
     const toggleSwitch2 = document.getElementById('toggleSwitch2');
+    const toggleSwitch3 = document.getElementById('toggleSwitch3');
 
     const dynamicCriteriums = document.getElementById('dynamicCriteriums');
     const chartContainer = document.getElementById('chart-container');
@@ -357,6 +396,7 @@
     const modifiableTabulator = document.getElementById('modifiable-tabulator');
     const heatmapContainer = document.getElementById('heatmap-container');
     const heatmapFilter = document.getElementById('heatmap-filter');
+    const scheduleOptimization = document.getElementById("schedule-otimization");
 
     const container = document.getElementById('extra-charts-container');
     const graphs = container.querySelectorAll('div');
@@ -377,7 +417,7 @@
       document.getElementById("h4-heatmap"),
       document.getElementById("h4-modifiable"),
       document.getElementById("h4-download"),
-      document.getElementById("h4-extra")
+      document.getElementById("h4-extra"),
     ];
     
   
@@ -393,6 +433,7 @@
     toggleSwitch2.addEventListener('change', function() {
       handleSwitch(criteriumFormulaInputs, criteriumTextInputs, toggleSwitch2, false);
     });
+
 
 
 
@@ -570,6 +611,7 @@
       saveSettings()
       console.log(dynamicCriteriumsLists)
     });
+
 
   
     

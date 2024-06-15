@@ -99,6 +99,42 @@
     text-align: center;
   }
 
+  #avaliableOptimizationCriteriums {
+    background-color: #8db39b1c;
+    padding: 15px;
+    border-radius: 8px;
+    
+    margin-bottom: 20px;
+  }
+  
+  #avaliableOptimizationCriteriums p {
+    margin: 0;
+    font-size: 18px;
+    font-weight: bold;
+    color: #365486;
+  }
+  
+  #avaliableOptimizationCriteriums ul {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 0 0;
+  }
+  
+  #avaliableOptimizationCriteriums ul li {
+    background-color: #ffffffa8;
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #0073e6;
+    transition: background-color 0.3s;
+    font-size: 16px
+  }
+  
+  #avaliableOptimizationCriteriums ul li:hover {
+    background-color: #d0eaff;
+  }
+  
+
   button, input[type="submit"]  {
     padding: 8px 15px;
     background-color: #0066ff;
