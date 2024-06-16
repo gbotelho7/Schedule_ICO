@@ -42,11 +42,10 @@ class RoomAssignmentProblem(IntegerProblem):
         #Ter o minimo de sobrelotações
         #Ter o minimo de sobreposições
         #Ter o minimos de aulas com requisitos não cumpridos
-        self.number_of_objectives = 3  # Example: minimize distance, balance usage
+        self.number_of_objectives = 3  
         self.number_of_constraints = 0  # No constraints
 
         self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
-        # self.obj_labels = ['Total Distance', 'Balance Usage']
         self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements']
 
 
