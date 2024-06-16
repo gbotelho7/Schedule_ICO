@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <title>Gestor de Horários</title>
+  <title>Gestor e Otimizador de Horários</title>
 
   <link rel="stylesheet" type="text/css" href="styles.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.0.5/css/tabulator.min.css" rel="stylesheet">
@@ -50,6 +50,7 @@
       <br>
       <br>
       <h3> Esta ferramenta permite a análise e a comparação de horários escolares, com o intuito de perceber qual destes é o mais indicado, através da avaliação de diferentes métricas.</h3>
+      <h3> Após análise é possível fazer a otimização automática de horários escolares, no sentido de obter uma solução o mais próxima da desejada possível.</h3>
       <br>
       <br>
     </div>
@@ -333,7 +334,7 @@
       <h3>Otimização de horários <button  onclick="window.dialog_schedule_otimization.showModal();">?</button></h1> 
       <dialog id="dialog_schedule_otimization">
         <h3>Otimizar o horário selecionado</h3>
-      <p>Para obter uma solução de horário otimizada baseada no horário que selecionou em Avaliação de critérios, é possível recorrer às seguintes alternativas:</p>
+      <p>Para obter uma solução de horário otimizada baseada no horário selecionado em Avaliação de critérios, é possível recorrer às seguintes alternativas:</p>
       <ul>
           <li><strong>Otimização multi-objetivo:</strong> Esta abordagem permite otimizar o horário levando em consideração todos os critérios disponíveis ao mesmo tempo. Isso pode ajudar a encontrar um equilíbrio entre os critérios mais comuns no problema de Timetabling. Os critérios disponíveis para a otimização multi-objetivo são:
               <ul>
