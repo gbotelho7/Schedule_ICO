@@ -639,18 +639,26 @@ function createModifiableTabulator(scheduleData, elementList) {
   });
 }
 
-function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList, carateristicasSalas){
-  console.log(selectedScheduleData)
-  console.log(hourFormat)
-  console.log(dateFormat)
+
+
+function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList, carateristicasSalas, otimizedSolutionFileName){
+
   document.getElementById('sendButton').addEventListener('click', function() {
+
+
+    otimizedSolutionFileName = document.getElementById('otimizedSolutionFileName').value;
+
+    if (!otimizedSolutionFileName) {
+      alert("Por favor, insira o nome do ficheiro a atribuir à solução e submeta antes de solicitar a otimização do horário.");
+      return;
+    }
 
     fetch('http://127.0.0.1:5000/optimize', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, carateristicasSalas: carateristicasSalas, selectedOtimizationType: selectedOtimizationType, selectedSingleObjectiveCriterium: selectedSingleObjectiveCriterium})
+        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, carateristicasSalas: carateristicasSalas, selectedOtimizationType: selectedOtimizationType, selectedSingleObjectiveCriterium: selectedSingleObjectiveCriterium, otimizedSolutionFileName: otimizedSolutionFileName})
     })
     .then(response => response.json())
     .then(data => {
