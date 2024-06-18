@@ -32,21 +32,38 @@ class RoomAssignmentProblem(IntegerProblem):
         return self.number_of_variables
 
 
-    def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame):
+    # def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame, selected_Otimization_Type):
+    #     super(RoomAssignmentProblem, self).__init__()
+    #     self.rooms_df = rooms_df
+    #     self.schedule_df = schedule_df
+
+    #     self.number_of_variables = len(schedule_df)
+
+    #     if selected_Otimization_Type == "multi":
+    #         self.number_of_objectives = 5 
+    #         self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
+    #         self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements', 'Over Student', 'No Classroom']
+
+    #     else:
+    #         self.number_of_objectives = 1
+    #         self.obj_directions = [self.MINIMIZE]
+    #         self.obj_labels = [selected_SingleObjective_Criterium]
+
+    #     self.number_of_constraints = 0  # No constraints
+
+    def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame, ):
         super(RoomAssignmentProblem, self).__init__()
         self.rooms_df = rooms_df
         self.schedule_df = schedule_df
 
         self.number_of_variables = len(schedule_df)
-        #Objetivos:
-        #Ter o minimo de sobrelotações
-        #Ter o minimo de sobreposições
-        #Ter o minimos de aulas com requisitos não cumpridos
-        self.number_of_objectives = 3  
-        self.number_of_constraints = 0  # No constraints
 
-        self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
+        self.number_of_objectives = 5 
+        self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
         self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements']
+
+
+        self.number_of_constraints = 0  # No constraints
 
 
 
@@ -56,6 +73,9 @@ class RoomAssignmentProblem(IntegerProblem):
         overcapacity_count = 0
         overlap_count = 0
         unmet_requirements_count = 0
+        count_total_students_overcrowding = 0
+        count_not_necessary_classroom = 0
+        countNoClassroom = 0
 
         room_usage = [[] for _ in range(len(self.rooms_df))]
 
@@ -69,29 +89,44 @@ class RoomAssignmentProblem(IntegerProblem):
             room_capacity = room_info['Capacidade Normal']
             if class_size > room_capacity:
                 overcapacity_count += 1
+                # # Alunos a mais (sobrelotaçoes)  
+                # count_total_students_overcrowding += int(class_size - room_capacity)                       
+                
 
             # Check for overlaps
             start_time = class_info['Início']
             end_time = class_info['Fim']
             for (other_start, other_end) in room_usage[room_index]:
-                if not (end_time <= other_start or start_time >= other_end):
-                    overlap_count += 1
-                    break
+                    if ((start_time < other_end and end_time > other_start) or (other_start < end_time and other_end > start_time)):
+                        overlap_count += 1
+                        break
             room_usage[room_index].append((start_time, end_time))
 
             # Check for unmet requirements
-            class_requirements = class_info['Características da sala pedida para a aula'].split(', ')
-            room_features = [col for col in self.rooms_df.columns[4:] if room_info[col] == 'X']
-            for requirement in class_requirements:
-                if requirement not in room_features:
-                    unmet_requirements_count += 1
-                    break
+            class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
+            # #Aulas sem sala
+            # if "Não necessita de sala" not in class_requirements:
+            #     if class_info['Sala da aula'] == "":
+            #         countNoClassroom += 1
+            #         break
+            if "Não necessita de sala" not in class_requirements:
+                room_features = [col for col in self.rooms_df.columns[4:] if room_info[col] == 'X']
+                for requirement in class_requirements:
 
+                    if requirement not in room_features:
+                        unmet_requirements_count += 1
+                        break
+
+
+
+    
             
 
         solution.objectives[0] = overcapacity_count
         solution.objectives[1] = overlap_count
         solution.objectives[2] = unmet_requirements_count
+        # solution.objectives[3] = countNoClassroom
+        # solution.objectives[4] = count_total_students_overcrowding
         
 
     def create_solution(self) -> IntegerSolution:
@@ -104,127 +139,142 @@ class RoomAssignmentProblem(IntegerProblem):
 
         # Random initialization within bounds
         for i in range(self.number_of_variables):
+            # class_requirements = str(self.schedule_df[i]['Características da sala pedida para a aula']).split(', ')
+            # if "Não necessita de sala" not in class_requirements:
             solution.variables[i] = random.randint(0, len(self.rooms_df) - 1)
-
         return solution
     
-@app.route('/optimize', methods=['POST'])
-def optimizeSchedule():
-    data = request.get_json()
-    selected_SingleObjective_Criterium = data['selectedSingleObjectiveCriterium']
-    print(selected_SingleObjective_Criterium)
-    selected_Otimization_Type = data['selectedOtimizationType']
-    print(selected_Otimization_Type)
+selected_SingleObjective_Criterium = ""
+selected_Otimization_Type = "multi"
 
-    ## APAGAR LIXO
-    return jsonify({"dummy": "ola"})
+# selected_SingleObjective_Criterium = "sobreposições"
+# selected_Otimization_Type = "single"c
 
+    
+# @app.route('/optimize', methods=['POST'])
+# def optimizeSchedule():
+#     data = request.get_json()
+#     selected_SingleObjective_Criterium = data['selectedSingleObjectiveCriterium']
+#     print(selected_SingleObjective_Criterium)
+#     selected_Otimization_Type = data['selectedOtimizationType']
+#     print(selected_Otimization_Type)
 
-    # # Assuming rooms_df and schedule_df are your DataFrames with the necessary data
-    # schedule_df = pd.read_csv('HorarioDeExemplo - Copy.csv', delimiter=';', encoding="utf-8")
-    # rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
-
-    # problem = RoomAssignmentProblem(rooms_df, schedule_df)
-
-    # # Define the crossover and mutation operators
-    # # crossover_operator = CXCrossover(probability=0.8)
-    # crossover_operator = IntegerSBXCrossover(probability=0.8)
-    # mutation_operator = IntegerPolynomialMutation(probability=0.2)
-
-    # # Define the algorithm
-    # algorithm_NSGAII = NSGAII(
-    #     problem=problem,
-    #     population_size=10,
-    #     offspring_population_size=10,
-    #     mutation=mutation_operator,
-    #     crossover=crossover_operator,
-    #     termination_criterion=StoppingByEvaluations(max_evaluations=200)
-    # )
-
-    # # Define the algorithm
-    # algorithm_Genetic = GeneticAlgorithm(
-    #     problem=problem,
-    #     population_size=10,
-    #     offspring_population_size=10,
-    #     mutation=mutation_operator,
-    #     crossover=crossover_operator,
-    #     termination_criterion=StoppingByEvaluations(max_evaluations=200)
-    # )
+#     ## APAGAR LIXO
+#     return jsonify({"dummy": "ola"})
 
 
+# Assuming rooms_df and schedule_df are your DataFrames with the necessary data
+schedule_df = pd.read_csv('HorarioDeExemplo - Copy.csv', delimiter=';', encoding="utf-8")
+rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
 
+problem = RoomAssignmentProblem(rooms_df, schedule_df)
 
-    # # progress_bar = ProgressBarObserver(max=200)
-    # # algorithm_NSGAII.observable.register(progress_bar)
+# Define the crossover and mutation operators
+# crossover_operator = CXCrossover(probability=0.8)
+crossover_operator = IntegerSBXCrossover(probability=0.8)
+mutation_operator = IntegerPolynomialMutation(probability=0.2)
 
-    # # # Run the algorithm
-    # # algorithm_NSGAII.run()
+# Define the algorithm
+algorithm_NSGAII = NSGAII(
+    problem=problem,
+    population_size=10,
+    offspring_population_size=10,
+    mutation=mutation_operator,
+    crossover=crossover_operator,
+    termination_criterion=StoppingByEvaluations(max_evaluations=200)
+)
 
-    # # # Get the results
-    # # solutions_NSGAII = algorithm_NSGAII.get_result()
-
-    # # # Process the solutions
-    # # for solution in solutions_NSGAII:
-    # #     print('Solution:', solution.variables)
-    # #     print('Objectives:', solution.objectives)
-
-    # # # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
-    # # solution_NSGAII = solutions_NSGAII[0]
-    # # room_assignments = solution_NSGAII.variables
+# Define the algorithm
+algorithm_Genetic = GeneticAlgorithm(
+    problem=problem,
+    population_size=10,
+    offspring_population_size=10,
+    mutation=mutation_operator,
+    crossover=crossover_operator,
+    termination_criterion=StoppingByEvaluations(max_evaluations=200)
+)
 
 
 
 
-    # progress_bar = ProgressBarObserver(max=200)
-    # algorithm_Genetic.observable.register(progress_bar)
+progress_bar = ProgressBarObserver(max=200)
+algorithm_NSGAII.observable.register(progress_bar)
 
-    # # Run the algorithm
-    # algorithm_Genetic.run()
+# Run the algorithm
+algorithm_NSGAII.run()
 
-    # # Get the results
-    # solutions_Genetic = algorithm_Genetic.get_result()
+# Get the results
+solutions_NSGAII = algorithm_NSGAII.get_result()
 
-    # # Process the solutions
+# Process the solutions
+for solution in solutions_NSGAII:
+    print('Solution:', solution.variables)
+    print('Objectives:', solution.objectives)
 
-    # print('Solution:', solutions_Genetic.variables)
-    # print('Objectives:', solutions_Genetic.objectives)
-
-    # # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
-    # solution_Genetic = solutions_Genetic
-    # room_assignments = solution_Genetic.variables
-
-
+# Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
+solution_NSGAII = solutions_NSGAII[0]
+room_assignments = solution_NSGAII.variables
 
 
 
-    # for i, room_index in enumerate(room_assignments):
-    #     room_info = rooms_df.iloc[room_index]
-    #     room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
-    #     capacity = rooms_df.iloc[room_index]['Capacidade Normal']
 
-    #     characteristics = []
-    #     for column in rooms_df.columns[4:]:
-    #         if column != 'Nº características' and not pd.isna(room_info[column]) and room_info[column] != '':
-    #             characteristics.append(column)
+# progress_bar = ProgressBarObserver(max=200)
+# algorithm_Genetic.observable.register(progress_bar)
 
-    #     schedule_df.at[i, 'Sala da aula'] = room_name  # Replace 'Sala da aula' with the room name
-    #     schedule_df.at[i, 'Lotação'] = int(capacity)
-    #     schedule_df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
+# # Run the algorithm
+# algorithm_Genetic.run()
 
-    # schedule_df['Lotação'] = schedule_df['Lotação'].astype(int)
+# # Get the results
+# solutions_Genetic = algorithm_Genetic.get_result()
 
-    # # Save the assigned rooms DataFrame to a CSV file
-    # schedule_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
+# # Process the solutions
+
+# print('Solution:', solutions_Genetic.variables)
+# print('Objectives:', solutions_Genetic.objectives)
+
+# # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
+# solution_Genetic = solutions_Genetic
+# room_assignments = solution_Genetic.variables
 
 
-    # with open('assigned_rooms.csv', 'r', encoding='utf-8') as file:
-    #     lines = file.readlines()
 
-    # if lines:
-    #     lines[-1] = lines[-1].rstrip('\n')
 
-    # with open('assigned_rooms.csv', 'w', encoding='utf-8') as file:
-    #     file.writelines(lines)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+for i, room_index in enumerate(room_assignments):
+    room_info = rooms_df.iloc[room_index]
+    room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
+    capacity = rooms_df.iloc[room_index]['Capacidade Normal']
+
+    characteristics = []
+    for column in rooms_df.columns[4:]:
+        if column != 'Nº características' and not pd.isna(room_info[column]) and room_info[column] != '':
+            characteristics.append(column)
+    
+    if "Não necessita de sala" not in str((schedule_df.at[i, 'Características da sala pedida para a aula'])).split(','):
+        schedule_df.at[i, 'Sala da aula'] = room_name  # Replace 'Sala da aula' with the room name
+        print("mudou sala")
+    else:
+         schedule_df.at[i, 'Sala da aula'] = ""
+         print("nao meteu sala: ", schedule_df.at[i, 'Turno'])
+        
+    schedule_df.at[i, 'Lotação'] = int(capacity)
+    schedule_df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
+
+
+schedule_df['Lotação'] = schedule_df['Lotação'].astype(int)
+
+# Save the assigned rooms DataFrame to a CSV file
+schedule_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
+
+
+with open('assigned_rooms.csv', 'r', encoding='utf-8') as file:
+    lines = file.readlines()
+
+if lines:
+    lines[-1] = lines[-1].rstrip('\n')
+
+with open('assigned_rooms.csv', 'w', encoding='utf-8') as file:
+    file.writelines(lines)
+
+# if __name__ == '__main__':
+#     app.run(debug=True)
