@@ -1,4 +1,5 @@
 import random
+import string
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
@@ -32,38 +33,38 @@ class RoomAssignmentProblem(IntegerProblem):
         return self.number_of_variables
 
 
-    # def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame, selected_Otimization_Type):
-    #     super(RoomAssignmentProblem, self).__init__()
-    #     self.rooms_df = rooms_df
-    #     self.schedule_df = schedule_df
-
-    #     self.number_of_variables = len(schedule_df)
-
-    #     if selected_Otimization_Type == "multi":
-    #         self.number_of_objectives = 5 
-    #         self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
-    #         self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements', 'Over Student', 'No Classroom']
-
-    #     else:
-    #         self.number_of_objectives = 1
-    #         self.obj_directions = [self.MINIMIZE]
-    #         self.obj_labels = [selected_SingleObjective_Criterium]
-
-    #     self.number_of_constraints = 0  # No constraints
-
-    def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame, ):
+    def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame):
         super(RoomAssignmentProblem, self).__init__()
         self.rooms_df = rooms_df
         self.schedule_df = schedule_df
 
         self.number_of_variables = len(schedule_df)
 
-        self.number_of_objectives = 5 
-        self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
-        self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements']
+        if selected_Otimization_Type == "multi":
+            self.number_of_objectives = 4 
+            self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
+            self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements', 'Over Student']
 
+        else:
+            self.number_of_objectives = 1
+            self.obj_directions = [self.MINIMIZE]
+            self.obj_labels = [selected_SingleObjective_Criterium]
 
         self.number_of_constraints = 0  # No constraints
+
+    # def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame, ):
+    #     super(RoomAssignmentProblem, self).__init__()
+    #     self.rooms_df = rooms_df
+    #     self.schedule_df = schedule_df
+
+    #     self.number_of_variables = len(schedule_df)
+
+    #     self.number_of_objectives = 3
+    #     self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
+    #     self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements']
+
+
+    #     self.number_of_constraints = 0  # No constraints
 
 
 
@@ -74,8 +75,7 @@ class RoomAssignmentProblem(IntegerProblem):
         overlap_count = 0
         unmet_requirements_count = 0
         count_total_students_overcrowding = 0
-        count_not_necessary_classroom = 0
-        countNoClassroom = 0
+
 
         room_usage = [[] for _ in range(len(self.rooms_df))]
 
@@ -89,26 +89,22 @@ class RoomAssignmentProblem(IntegerProblem):
             room_capacity = room_info['Capacidade Normal']
             if class_size > room_capacity:
                 overcapacity_count += 1
-                # # Alunos a mais (sobrelotaçoes)  
-                # count_total_students_overcrowding += int(class_size - room_capacity)                       
+                # Alunos a mais (sobrelotaçoes)  
+                count_total_students_overcrowding += int(class_size - room_capacity)                       
                 
 
             # Check for overlaps
             start_time = class_info['Início']
             end_time = class_info['Fim']
             for (other_start, other_end) in room_usage[room_index]:
-                    if ((start_time < other_end and end_time > other_start) or (other_start < end_time and other_end > start_time)):
-                        overlap_count += 1
-                        break
+                if not (end_time <= other_start or start_time >= other_end):
+                    overlap_count += 1
+                    break
             room_usage[room_index].append((start_time, end_time))
 
             # Check for unmet requirements
             class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
-            # #Aulas sem sala
-            # if "Não necessita de sala" not in class_requirements:
-            #     if class_info['Sala da aula'] == "":
-            #         countNoClassroom += 1
-            #         break
+
             if "Não necessita de sala" not in class_requirements:
                 room_features = [col for col in self.rooms_df.columns[4:] if room_info[col] == 'X']
                 for requirement in class_requirements:
@@ -123,25 +119,27 @@ class RoomAssignmentProblem(IntegerProblem):
             
 
         solution.objectives[0] = overcapacity_count
-        solution.objectives[1] = overlap_count
-        solution.objectives[2] = unmet_requirements_count
-        # solution.objectives[3] = countNoClassroom
-        # solution.objectives[4] = count_total_students_overcrowding
+        solution.objectives[2] = overlap_count
+        solution.objectives[3] = unmet_requirements_count
+        solution.objectives[1] = count_total_students_overcrowding
         
 
     def create_solution(self) -> IntegerSolution:
         solution = IntegerSolution(
             number_of_objectives=self.number_of_objectives,
             number_of_constraints=self.number_of_constraints,
-            lower_bound=[0] * self.number_of_variables,  # Lower bound for each variable
+            lower_bound=[-1] * self.number_of_variables,  # Lower bound for each variable
             upper_bound=[len(self.rooms_df) - 1] * self.number_of_variables  # Upper bound for each variable
         )
 
+
         # Random initialization within bounds
         for i in range(self.number_of_variables):
-            # class_requirements = str(self.schedule_df[i]['Características da sala pedida para a aula']).split(', ')
-            # if "Não necessita de sala" not in class_requirements:
-            solution.variables[i] = random.randint(0, len(self.rooms_df) - 1)
+            class_requirements = str(self.schedule_df.iloc[i]['Características da sala pedida para a aula']).split(', ')
+            if "Não necessita de sala" not in class_requirements:
+                solution.variables[i] = random.randint(0, len(self.rooms_df) - 1)
+            else:
+                solution.variables[i] = -1
         return solution
     
 selected_SingleObjective_Criterium = ""
@@ -211,9 +209,13 @@ for solution in solutions_NSGAII:
     print('Solution:', solution.variables)
     print('Objectives:', solution.objectives)
 
+
+
 # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
 solution_NSGAII = solutions_NSGAII[0]
 room_assignments = solution_NSGAII.variables
+
+
 
 
 
@@ -239,29 +241,32 @@ room_assignments = solution_NSGAII.variables
 
 
 
-
 for i, room_index in enumerate(room_assignments):
-    room_info = rooms_df.iloc[room_index]
-    room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
-    capacity = rooms_df.iloc[room_index]['Capacidade Normal']
+    if room_index == -1:
 
-    characteristics = []
-    for column in rooms_df.columns[4:]:
-        if column != 'Nº características' and not pd.isna(room_info[column]) and room_info[column] != '':
-            characteristics.append(column)
-    
-    if "Não necessita de sala" not in str((schedule_df.at[i, 'Características da sala pedida para a aula'])).split(','):
-        schedule_df.at[i, 'Sala da aula'] = room_name  # Replace 'Sala da aula' with the room name
-        print("mudou sala")
+        schedule_df.at[i, 'Sala da aula'] = ""             
+        schedule_df.at[i, 'Lotação'] = ""
+        schedule_df.at[i, 'Características reais da sala'] = ""
     else:
-         schedule_df.at[i, 'Sala da aula'] = ""
-         print("nao meteu sala: ", schedule_df.at[i, 'Turno'])
-        
-    schedule_df.at[i, 'Lotação'] = int(capacity)
-    schedule_df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
+        room_info = rooms_df.iloc[room_index]
+        room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
+        capacity = rooms_df.iloc[room_index]['Capacidade Normal']
 
 
-schedule_df['Lotação'] = schedule_df['Lotação'].astype(int)
+
+        characteristics = []
+        for column in rooms_df.columns[4:]:
+            if column != 'Nº características' and not pd.isna(room_info[column]) and room_info[column] != '':
+                characteristics.append(column)
+
+            schedule_df.at[i, 'Sala da aula'] = room_name  # Replace 'Sala da aula' with the room name
+
+            
+        schedule_df.at[i, 'Lotação'] = int(capacity)
+        schedule_df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
+        schedule_df.at[i, 'Lotação'] = int(schedule_df.at[i, 'Lotação'])
+
+
 
 # Save the assigned rooms DataFrame to a CSV file
 schedule_df.to_csv('assigned_rooms.csv', index=False, sep=';', encoding="utf-8")
