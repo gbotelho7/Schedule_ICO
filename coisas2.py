@@ -13,6 +13,7 @@ from jmetal.util.observer import ProgressBarObserver
 from jmetal.util.termination_criterion import StoppingByEvaluations
 from jmetal.algorithm.multiobjective.smpso import SMPSO
 from jmetal.util.archive import CrowdingDistanceArchive
+from intervaltree import Interval, IntervalTree
 app = Flask(__name__)
 CORS(app)
 
@@ -40,15 +41,15 @@ class RoomAssignmentProblem(IntegerProblem):
 
         self.number_of_variables = len(schedule_df)
 
-        if selected_Otimization_Type == "multi":
-            self.number_of_objectives = 4 
-            self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
-            self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements', 'Over Student']
+        # if selected_Otimization_Type == "multi":
+        self.number_of_objectives = 4 
+        self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
+        self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements', 'Over Student']
 
-        else:
-            self.number_of_objectives = 1
-            self.obj_directions = [self.MINIMIZE]
-            self.obj_labels = [selected_SingleObjective_Criterium]
+        # else:
+        #     self.number_of_objectives = 1
+        #     self.obj_directions = [self.MINIMIZE]
+        #     self.obj_labels = [selected_SingleObjective_Criterium]
 
         self.number_of_constraints = 0  # No constraints
 
@@ -77,7 +78,8 @@ class RoomAssignmentProblem(IntegerProblem):
         count_total_students_overcrowding = 0
 
 
-        room_usage = [[] for _ in range(len(self.rooms_df))]
+        # room_usage = [[] for _ in range(len(self.rooms_df))]
+        room_usage = {i: IntervalTree() for i in range(len(self.rooms_df))}
 
         for i in range(self.number_of_variables):
             class_info = self.schedule_df.iloc[i]
@@ -90,20 +92,41 @@ class RoomAssignmentProblem(IntegerProblem):
             if class_size > room_capacity:
                 overcapacity_count += 1
                 # Alunos a mais (sobrelotaçoes)  
-                count_total_students_overcrowding += int(class_size - room_capacity)                       
+                count_total_students_overcrowding += int(class_size - room_capacity)   
+
+            class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
                 
 
             # Check for overlaps
-            start_time = class_info['Início']
-            end_time = class_info['Fim']
-            for (other_start, other_end) in room_usage[room_index]:
-                if not (end_time <= other_start or start_time >= other_end):
-                    overlap_count += 1
-                    break
-            room_usage[room_index].append((start_time, end_time))
+            
+            # start_time = class_info['Início']
+            # end_time = class_info['Fim']
+            # day = class_info['Dia']
+            
+            # for (other_start, other_end, other_day) in room_usage[room_index]:
+            #     if day == other_day:
+            #         if not (end_time <= other_start or start_time >= other_end and "Não necessita de sala" not in class_requirements):
+            #             overlap_count += 1
+            #             break
+            # room_usage[room_index].append((start_time, end_time, day))
 
             # Check for unmet requirements
-            class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
+            # Check for overlaps
+
+
+            start_time = pd.to_datetime(class_info['Início']).time()
+            end_time = pd.to_datetime(class_info['Fim']).time()
+            day = class_info['Dia']
+
+            current_interval = Interval(start_time.hour * 60 + start_time.minute, end_time.hour * 60 + end_time.minute)
+
+            if(room_index != -1):
+                if room_usage[room_index].overlaps(current_interval):
+                    overlap_count += 1
+                else:
+                    room_usage[room_index].add(current_interval)
+
+
 
             if "Não necessita de sala" not in class_requirements:
                 room_features = [col for col in self.rooms_df.columns[4:] if room_info[col] == 'X']
@@ -113,10 +136,6 @@ class RoomAssignmentProblem(IntegerProblem):
                         unmet_requirements_count += 1
                         break
 
-
-
-    
-            
 
         solution.objectives[0] = overcapacity_count
         solution.objectives[2] = overlap_count
@@ -136,7 +155,7 @@ class RoomAssignmentProblem(IntegerProblem):
         # Random initialization within bounds
         for i in range(self.number_of_variables):
             class_requirements = str(self.schedule_df.iloc[i]['Características da sala pedida para a aula']).split(', ')
-            if "Não necessita de sala" not in class_requirements:
+            if 'Não necessita de sala' not in class_requirements:
                 solution.variables[i] = random.randint(0, len(self.rooms_df) - 1)
             else:
                 solution.variables[i] = -1
@@ -204,16 +223,19 @@ algorithm_NSGAII.run()
 # Get the results
 solutions_NSGAII = algorithm_NSGAII.get_result()
 
-# Process the solutions
-for solution in solutions_NSGAII:
-    print('Solution:', solution.variables)
-    print('Objectives:', solution.objectives)
+# # Process the solutions
+# for solution in solutions_NSGAII:
+#     print('Solution:', solution.variables)
+#     print('Objectives:', solution.objectives)
 
 
 
 # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
 solution_NSGAII = solutions_NSGAII[0]
 room_assignments = solution_NSGAII.variables
+
+print(solution_NSGAII.objectives)
+print(solution_NSGAII.variables)
 
 
 
@@ -251,8 +273,6 @@ for i, room_index in enumerate(room_assignments):
         room_info = rooms_df.iloc[room_index]
         room_name = rooms_df.iloc[room_index]['Nome sala']  # Fetch the room name from rooms_df
         capacity = rooms_df.iloc[room_index]['Capacidade Normal']
-
-
 
         characteristics = []
         for column in rooms_df.columns[4:]:
