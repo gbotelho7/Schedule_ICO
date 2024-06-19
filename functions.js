@@ -378,21 +378,41 @@ function criteriumClassRequisites(results) {
     let askedRequisites = results.data[i][dictionary['Características da sala pedida para a aula']]
     let roomName = results.data[i][dictionary['Sala da aula']];
     if (roomName in classRoomDictionary) {
-      if (!classRoomDictionary[roomName].includes(askedRequisites) && askedRequisites!= "Não necessita de sala") {
-        countRequisitesNotMet++
-        results.data[i]['Requisitos não cumpridos'] = true
-        results.data[i]['Aulas Sem Sala'] = false
-      } else {
+      if(askedRequisites === "Lab ISTA"){
+        console.log(classRoomDictionary[roomName])
+      }
+      
+      if (!classRoomDictionary[roomName].includes(askedRequisites) && askedRequisites != "Não necessita de sala")  {
+        if((askedRequisites === "Sala/anfiteatro aulas" && (classRoomDictionary[roomName].includes("Sala de Aulas normal") || classRoomDictionary[roomName].includes("Anfiteatro aulas")) ) || (askedRequisites === "Lab ISTA" && classRoomDictionary[roomName].includes("Lab ISTA") )) {
+
+          results.data[i]['Requisitos não cumpridos'] = false
+          results.data[i]['Aulas Sem Sala'] = false
+        }else{
+          countRequisitesNotMet++
+          results.data[i]['Requisitos não cumpridos'] = true
+          results.data[i]['Aulas Sem Sala'] = false
+        }
+      }
+      if(askedRequisites != "Não necessita de sala" && classRoomDictionary[roomName].includes(askedRequisites)){
         results.data[i]['Requisitos não cumpridos'] = false
         results.data[i]['Aulas Sem Sala'] = false
       }
-    } else if (roomName === "" && askedRequisites != "Não necessita de sala") {
+    else if(roomName === "" && askedRequisites != "Não necessita de sala"){
       countNoClassroom++
-      results.data[i]['Requisitos não cumpridos'] = true
-      results.data[i]['Aulas Sem Sala'] = true
-    } else {
       results.data[i]['Requisitos não cumpridos'] = false
-      results.data[i]['Aulas Sem Sala'] = false
+      results.data[i]['Aulas Sem Sala'] = true
+    }
+    //   } else {
+    //     results.data[i]['Requisitos não cumpridos'] = false
+    //     results.data[i]['Aulas Sem Sala'] = false
+    //   }
+    // } else if (roomName === "" && askedRequisites != "Não necessita de sala") {
+    //   countNoClassroom++
+    //   results.data[i]['Requisitos não cumpridos'] = true
+    //   results.data[i]['Aulas Sem Sala'] = true
+    // } else {
+    //   results.data[i]['Requisitos não cumpridos'] = false
+    //   results.data[i]['Aulas Sem Sala'] = false
     }
   }
   results.criteriums['Requisitos não cumpridos'] = countRequisitesNotMet
@@ -619,6 +639,8 @@ function createModifiableTabulator(scheduleData, elementList) {
 
     // Check if 'key' is not present in the values of the 'dictionary'
     if (!dictionaryValues.includes(key)) {
+      console.log(dictionaryValues)
+      console.log(key)
       column.formatter = "tickCross";
       column.editor = ""
       column.headerFilter = ""

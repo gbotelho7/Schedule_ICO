@@ -41,10 +41,14 @@ class RoomAssignmentProblem(IntegerProblem):
 
         self.number_of_variables = len(schedule_df)
 
-        # if selected_Otimization_Type == "multi":
-        self.number_of_objectives = 2
-        self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
-        self.obj_labels = ['Overcapacity', 'Unmet Requirements']
+        # # if selected_Otimization_Type == "multi":
+        # self.number_of_objectives = 2
+        # self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
+        # self.obj_labels = ['Overcapacity', 'Unmet Requirements']
+
+        self.number_of_objectives = 1
+        self.obj_directions = [self.MINIMIZE]
+        self.obj_labels = ['Unmet Requirements']
 
         # else:
         #     self.number_of_objectives = 1
@@ -83,25 +87,29 @@ class RoomAssignmentProblem(IntegerProblem):
             room_index = solution.variables[i]
             room_info = self.rooms_df.iloc[room_index]
 
-            # Check for overcapacity
-            class_size = class_info['Inscritos no turno']
-            room_capacity = room_info['Capacidade Normal']
-            if class_size > room_capacity:
-                overcapacity_count += 1
-                # Alunos a mais (sobrelotaçoes)  
-                # count_total_students_overcrowding += int(class_size - room_capacity)   
-
             if "Não necessita de sala" not in class_requirements:
                 room_features = [col for col in self.rooms_df.columns[5:] if room_info[col] == 'X']
                 for requirement in class_requirements:
                     if requirement not in room_features:
+                        print(class_requirements,room_features) 
                         unmet_requirements_count += 1
                         break
 
 
-        solution.objectives[0] = overcapacity_count
+            # # Check for overcapacity
+            # class_size = class_info['Inscritos no turno']
+            # room_capacity = room_info['Capacidade Normal']
+            # if class_size > room_capacity:
+            #     overcapacity_count += 1
+                # Alunos a mais (sobrelotaçoes)  
+                # count_total_students_overcrowding += int(class_size - room_capacity)   
+
+
+
+        # solution.objectives[0] = overcapacity_count
         # solution.objectives[1] = count_total_students_overcrowding
-        solution.objectives[1] = unmet_requirements_count
+        # solution.objectives[1] = unmet_requirements_count
+        solution.objectives[0] = unmet_requirements_count
         
 
     def create_solution(self) -> IntegerSolution:
