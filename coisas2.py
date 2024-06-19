@@ -42,9 +42,9 @@ class RoomAssignmentProblem(IntegerProblem):
         self.number_of_variables = len(schedule_df)
 
         # if selected_Otimization_Type == "multi":
-        self.number_of_objectives = 4 
-        self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
-        self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements', 'Over Student']
+        self.number_of_objectives = 2
+        self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
+        self.obj_labels = ['Overcapacity', 'Unmet Requirements']
 
         # else:
         #     self.number_of_objectives = 1
@@ -73,16 +73,13 @@ class RoomAssignmentProblem(IntegerProblem):
 
     def evaluate(self, solution: IntegerSolution):
         overcapacity_count = 0
-        overlap_count = 0
         unmet_requirements_count = 0
-        count_total_students_overcrowding = 0
 
-
-        # room_usage = [[] for _ in range(len(self.rooms_df))]
-        room_usage = {i: IntervalTree() for i in range(len(self.rooms_df))}
+        
 
         for i in range(self.number_of_variables):
             class_info = self.schedule_df.iloc[i]
+            class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
             room_index = solution.variables[i]
             room_info = self.rooms_df.iloc[room_index]
 
@@ -92,55 +89,19 @@ class RoomAssignmentProblem(IntegerProblem):
             if class_size > room_capacity:
                 overcapacity_count += 1
                 # Alunos a mais (sobrelotaçoes)  
-                count_total_students_overcrowding += int(class_size - room_capacity)   
-
-            class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
-                
-
-            # Check for overlaps
-            
-            # start_time = class_info['Início']
-            # end_time = class_info['Fim']
-            # day = class_info['Dia']
-            
-            # for (other_start, other_end, other_day) in room_usage[room_index]:
-            #     if day == other_day:
-            #         if not (end_time <= other_start or start_time >= other_end and "Não necessita de sala" not in class_requirements):
-            #             overlap_count += 1
-            #             break
-            # room_usage[room_index].append((start_time, end_time, day))
-
-            # Check for unmet requirements
-            # Check for overlaps
-
-
-            start_time = pd.to_datetime(class_info['Início']).time()
-            end_time = pd.to_datetime(class_info['Fim']).time()
-            day = class_info['Dia']
-
-            current_interval = Interval(start_time.hour * 60 + start_time.minute, end_time.hour * 60 + end_time.minute)
-
-            if(room_index != -1):
-                if room_usage[room_index].overlaps(current_interval):
-                    overlap_count += 1
-                else:
-                    room_usage[room_index].add(current_interval)
-
-
+                # count_total_students_overcrowding += int(class_size - room_capacity)   
 
             if "Não necessita de sala" not in class_requirements:
-                room_features = [col for col in self.rooms_df.columns[4:] if room_info[col] == 'X']
+                room_features = [col for col in self.rooms_df.columns[5:] if room_info[col] == 'X']
                 for requirement in class_requirements:
-
                     if requirement not in room_features:
                         unmet_requirements_count += 1
                         break
 
 
         solution.objectives[0] = overcapacity_count
-        solution.objectives[2] = overlap_count
-        solution.objectives[3] = unmet_requirements_count
-        solution.objectives[1] = count_total_students_overcrowding
+        # solution.objectives[1] = count_total_students_overcrowding
+        solution.objectives[1] = unmet_requirements_count
         
 
     def create_solution(self) -> IntegerSolution:

@@ -378,7 +378,7 @@ function criteriumClassRequisites(results) {
     let askedRequisites = results.data[i][dictionary['Características da sala pedida para a aula']]
     let roomName = results.data[i][dictionary['Sala da aula']];
     if (roomName in classRoomDictionary) {
-      if (!classRoomDictionary[roomName].includes(askedRequisites)) {
+      if (!classRoomDictionary[roomName].includes(askedRequisites) && askedRequisites!= "Não necessita de sala") {
         countRequisitesNotMet++
         results.data[i]['Requisitos não cumpridos'] = true
         results.data[i]['Aulas Sem Sala'] = false
@@ -386,7 +386,7 @@ function criteriumClassRequisites(results) {
         results.data[i]['Requisitos não cumpridos'] = false
         results.data[i]['Aulas Sem Sala'] = false
       }
-    } else if (roomName === "" && askedRequisites != "Não necessita de sala") { //"
+    } else if (roomName === "" && askedRequisites != "Não necessita de sala") {
       countNoClassroom++
       results.data[i]['Requisitos não cumpridos'] = true
       results.data[i]['Aulas Sem Sala'] = true
