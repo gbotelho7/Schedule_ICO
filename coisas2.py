@@ -1,22 +1,18 @@
 import random
-import string
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
 from jmetal.core.problem import IntegerProblem
 from jmetal.core.solution import IntegerSolution
-from jmetal.operator import PMXCrossover, IntegerPolynomialMutation, CXCrossover, NullCrossover
+from jmetal.operator import IntegerPolynomialMutation
 from jmetal.algorithm.singleobjective.genetic_algorithm import GeneticAlgorithm
 from jmetal.algorithm.multiobjective.nsgaii import NSGAII
 from jmetal.operator.crossover import IntegerSBXCrossover
 from jmetal.util.observer import ProgressBarObserver
 from jmetal.util.termination_criterion import StoppingByEvaluations
-from jmetal.algorithm.multiobjective.smpso import SMPSO
-from jmetal.util.archive import CrowdingDistanceArchive
-from intervaltree import Interval, IntervalTree
+
 app = Flask(__name__)
 CORS(app)
-
 
 
 class RoomAssignmentProblem(IntegerProblem):
@@ -41,14 +37,10 @@ class RoomAssignmentProblem(IntegerProblem):
 
         self.number_of_variables = len(schedule_df)
 
-        # # if selected_Otimization_Type == "multi":
-        # self.number_of_objectives = 2
-        # self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
-        # self.obj_labels = ['Overcapacity', 'Unmet Requirements']
-
-        self.number_of_objectives = 1
-        self.obj_directions = [self.MINIMIZE]
-        self.obj_labels = ['Unmet Requirements']
+        # if selected_Otimization_Type == "multi":
+        self.number_of_objectives = 2
+        self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
+        self.obj_labels = ['Overcapacity', 'Unmet Requirements']
 
         # else:
         #     self.number_of_objectives = 1
@@ -79,39 +71,43 @@ class RoomAssignmentProblem(IntegerProblem):
         overcapacity_count = 0
         unmet_requirements_count = 0
 
-        
-
         for i in range(self.number_of_variables):
             class_info = self.schedule_df.iloc[i]
             class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
             room_index = solution.variables[i]
             room_info = self.rooms_df.iloc[room_index]
 
-            if "Não necessita de sala" not in class_requirements:
+            class_size = class_info['Inscritos no turno']
+            room_capacity = room_info['Capacidade Normal']
+            if class_size > room_capacity:
+                overcapacity_count += 1
+                
+            if room_index != -1:
+                room_info = self.rooms_df.iloc[room_index]
                 room_features = [col for col in self.rooms_df.columns[5:] if room_info[col] == 'X']
                 for requirement in class_requirements:
-                    if requirement not in room_features:
-                        print(class_requirements,room_features) 
-                        unmet_requirements_count += 1
-                        break
+                    if requirement == "Não necessita de sala":
+                        continue
+                    if not any(requirement in feature for feature in room_features):                    
+                        if (requirement == "Sala/anfiteatro aulas" and 
+                            ("Sala de Aulas normal" in room_features or "Anfiteatro aulas" in room_features)):
+                            unmet_requirements_count += 0
+                        elif (requirement == "Lab ISTA" and 
+                                any(feature for feature in room_features if "Laboratório" in feature and feature != "Laboratório de Informática")):
+                            unmet_requirements_count += 0
+                        elif (requirement == "Anfiteatro aulas" and "Sala/anfiteatro aulas" in room_features):
+                            unmet_requirements_count += 0
+                        else:
+                            unmet_requirements_count += 1
+                            break
+            else:
+                if class_requirements != "Não necessita de sala":
+                    unmet_requirements_count += 1
 
 
-            # # Check for overcapacity
-            # class_size = class_info['Inscritos no turno']
-            # room_capacity = room_info['Capacidade Normal']
-            # if class_size > room_capacity:
-            #     overcapacity_count += 1
-                # Alunos a mais (sobrelotaçoes)  
-                # count_total_students_overcrowding += int(class_size - room_capacity)   
-
-
-
-        # solution.objectives[0] = overcapacity_count
-        # solution.objectives[1] = count_total_students_overcrowding
-        # solution.objectives[1] = unmet_requirements_count
-        solution.objectives[0] = unmet_requirements_count
-        
-
+        solution.objectives[0] = overcapacity_count
+        solution.objectives[1] = unmet_requirements_count
+         
     def create_solution(self) -> IntegerSolution:
         solution = IntegerSolution(
             number_of_objectives=self.number_of_objectives,
@@ -120,15 +116,54 @@ class RoomAssignmentProblem(IntegerProblem):
             upper_bound=[len(self.rooms_df) - 1] * self.number_of_variables  # Upper bound for each variable
         )
 
+        # Ordenar salas por capacidade para tentativa de alocação mais adequada
+        sorted_rooms = self.rooms_df.sort_values(by='Capacidade Normal').reset_index()
 
-        # Random initialization within bounds
         for i in range(self.number_of_variables):
-            class_requirements = str(self.schedule_df.iloc[i]['Características da sala pedida para a aula']).split(', ')
+            class_info = self.schedule_df.iloc[i]
+            class_size = class_info['Inscritos no turno']
+            class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
+
             if 'Não necessita de sala' not in class_requirements:
-                solution.variables[i] = random.randint(0, len(self.rooms_df) - 1)
+                # Tentar encontrar uma sala adequada
+                assigned = False
+                for j, room_info in sorted_rooms.iterrows():
+                    room_capacity = room_info['Capacidade Normal']
+                    if class_size <= room_capacity:
+                        room_features = [col for col in self.rooms_df.columns[5:] if room_info[col] == 'X']
+                        if all(req in room_features for req in class_requirements):
+                            solution.variables[i] = room_info['index']
+                            assigned = True
+                            break
+                        else:
+                            for requirement in class_requirements:
+                                if requirement == "Não necessita de sala":
+                                    continue
+                                if not any(requirement in feature for feature in room_features):
+                                    if (requirement == "Sala/anfiteatro aulas" and ("Sala de Aulas normal" in room_features or "Anfiteatro aulas" in room_features)):
+                                        solution.variables[i] = room_info['index']
+                                        assigned = True
+                                        break
+                                    elif (requirement == "Lab ISTA" and any(feature for feature in room_features if "Laboratório" in feature and feature != "Laboratório de Informática")):
+                                        solution.variables[i] = room_info['index']
+                                        assigned = True
+                                        break
+                                    elif (requirement == "Anfiteatro aulas" and "Sala/anfiteatro aulas" in room_features):
+                                        solution.variables[i] = room_info['index']
+                                        assigned = True
+                                        break
+                                    else:
+                                        #print("entrei")
+                                        #unmet_requirements_count += 1
+                                        break
+                # Se não encontrar uma sala ideal, atribuir aleatoriamente dentro dos limites
+                if not assigned:
+                    solution.variables[i] = random.randint(0, len(self.rooms_df) - 1)
             else:
                 solution.variables[i] = -1
+
         return solution
+    
     
 selected_SingleObjective_Criterium = ""
 selected_Otimization_Type = "multi"
@@ -150,7 +185,7 @@ selected_Otimization_Type = "multi"
 
 
 # Assuming rooms_df and schedule_df are your DataFrames with the necessary data
-schedule_df = pd.read_csv('HorarioDeExemplo - Copy.csv', delimiter=';', encoding="utf-8")
+schedule_df = pd.read_csv('HorarioDeExemplo.csv', delimiter=';', encoding="utf-8")
 rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
 
 problem = RoomAssignmentProblem(rooms_df, schedule_df)
@@ -159,6 +194,8 @@ problem = RoomAssignmentProblem(rooms_df, schedule_df)
 # crossover_operator = CXCrossover(probability=0.8)
 crossover_operator = IntegerSBXCrossover(probability=0.8)
 mutation_operator = IntegerPolynomialMutation(probability=0.2)
+
+
 
 # Define the algorithm
 algorithm_NSGAII = NSGAII(
@@ -192,10 +229,10 @@ algorithm_NSGAII.run()
 # Get the results
 solutions_NSGAII = algorithm_NSGAII.get_result()
 
-# # Process the solutions
-# for solution in solutions_NSGAII:
-#     print('Solution:', solution.variables)
-#     print('Objectives:', solution.objectives)
+# Process the solutions
+for solution in solutions_NSGAII:
+    # print('Solution:', solution.variables)
+    print('Objectives:', solution.objectives)
 
 
 
@@ -203,8 +240,8 @@ solutions_NSGAII = algorithm_NSGAII.get_result()
 solution_NSGAII = solutions_NSGAII[0]
 room_assignments = solution_NSGAII.variables
 
-print(solution_NSGAII.objectives)
-print(solution_NSGAII.variables)
+# print(solution_NSGAII.objectives)
+# print(solution_NSGAII.variables)
 
 
 

@@ -378,13 +378,18 @@ function criteriumClassRequisites(results) {
     let askedRequisites = results.data[i][dictionary['Características da sala pedida para a aula']]
     let roomName = results.data[i][dictionary['Sala da aula']];
     if (roomName in classRoomDictionary) {
-      if(askedRequisites === "Lab ISTA"){
-        console.log(classRoomDictionary[roomName])
-      }
-      
       if (!classRoomDictionary[roomName].includes(askedRequisites) && askedRequisites != "Não necessita de sala")  {
+        if(askedRequisites === "Anfiteatro aulas"){
+          console.log('reais quando pedem anfi' + classRoomDictionary[roomName])
+        }
         if((askedRequisites === "Sala/anfiteatro aulas" && (classRoomDictionary[roomName].includes("Sala de Aulas normal") || classRoomDictionary[roomName].includes("Anfiteatro aulas")) ) || (askedRequisites === "Lab ISTA" && classRoomDictionary[roomName].includes("Lab ISTA") )) {
 
+          results.data[i]['Requisitos não cumpridos'] = false
+          results.data[i]['Aulas Sem Sala'] = false
+        }else if (askedRequisites === "Lab ISTA" &&  classRoomDictionary[roomName].some(feature => feature.includes("Laboratório") && feature != "Laboratório de Informática")){
+          results.data[i]['Requisitos não cumpridos'] = false
+          results.data[i]['Aulas Sem Sala'] = false
+        }else if (askedRequisites === "Anfiteatro aulas" && classRoomDictionary[roomName].includes("Sala/anfiteatro aulas")) {
           results.data[i]['Requisitos não cumpridos'] = false
           results.data[i]['Aulas Sem Sala'] = false
         }else{
