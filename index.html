@@ -361,7 +361,7 @@
           <p>De seguida, selecione o critério que pretende escolher para a otimização.</p>
           <p>Insira o nome pretendido para atribuir ao ficheiro relativo à solução otimizada do horário selecionado. Atenção: tem de terminar em ".csv"
           <p>Para efetuar a otimização, selecione o botão Otimizar Horário.</p>
-          <p>Se pretender efetuar a comparação entre o horário original e o correspondente horário selecionado, volte a submeter o horário original, simultaneamente com o horário otimizado</ul>
+          <p>Se pretender efetuar a comparação entre o horário original e o correspondente horário otimizado, volte a submeter o horário original, simultaneamente com o horário otimizado</ul>
       </ul>
 
         <button onclick="window.dialog_schedule_otimization.close();" aria-label="close" class="x">❌</button>
@@ -396,6 +396,18 @@
         </select>
       </div>
       <br>
+      <h3>Insira o nome do seu ficheiro de caracterização de salas:</h3>
+      <input type="text" id="roomsCharsFileName" placeholder="Nome do ficheiro">
+      <input type="submit"  id="roomsCharsFileName">
+      <br>
+      <br>
+      <p id="response"></p>
+      <h3>Insira o nome do seu ficheiro de horário a otimizar:</h3>
+      <input type="text" id="scheduleFileName" placeholder="Nome do ficheiro">
+      <input type="submit"  id="scheduleFileName">
+      <br>
+      <br>
+      <p id="response"></p>
       <h3>Insira o nome a atribuir ao ficheiro relativo à solução otimizada do horário:</h3>
       <input type="text" id="otimizedSolutionFileName" placeholder="Nome do ficheiro">
       <input type="submit"  id="otimizedSolutionFileName">
@@ -410,8 +422,8 @@
 
     
   
-
-    
+    roomsCharsFileName = document.getElementById('roomsCharsFileName').value;
+    scheduleFileName = document.getElementById('scheduleFileName').value;
     otimizedSolutionFileName = document.getElementById('otimizedSolutionFileName').value;
     const showFormButton = document.getElementById("show-form-button");
     const parseButton = document.getElementById("parseButton");

@@ -674,18 +674,31 @@ function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDiction
 
 
     otimizedSolutionFileName = document.getElementById('otimizedSolutionFileName').value;
+    roomsCharsFileName = document.getElementById('roomsCharsFileName').value;
+    scheduleFileName = document.getElementById('otimizedSolutionFileName').value;
 
+    console.log("nome ficheiro" + scheduleFileName)
+
+    if(!scheduleFileName){
+      alert("Por favor, insira o nome do ficheiro do horário")
+    }
+
+    if (!roomsCharsFileName){
+      alert("Por favor, insira o nome do ficheiro das características das salas")
+      return;
+    }
     if (!otimizedSolutionFileName) {
       alert("Por favor, insira o nome do ficheiro a atribuir à solução e submeta antes de solicitar a otimização do horário.");
       return;
     }
+
 
     fetch('http://127.0.0.1:5000/optimize', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, carateristicasSalas: carateristicasSalas, selectedOtimizationType: selectedOtimizationType, selectedSingleObjectiveCriterium: selectedSingleObjectiveCriterium, otimizedSolutionFileName: otimizedSolutionFileName})
+        body: JSON.stringify({scheduleFileName: scheduleFileName, roomsCharsFileName: roomsCharsFileName, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, carateristicasSalas: carateristicasSalas, selectedOtimizationType: selectedOtimizationType, selectedSingleObjectiveCriterium: selectedSingleObjectiveCriterium, otimizedSolutionFileName: otimizedSolutionFileName})
     })
     .then(response => response.json())
     .then(data => {
