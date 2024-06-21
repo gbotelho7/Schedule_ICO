@@ -52,34 +52,34 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Definindo a classe Solution para armazenar as soluções
-class Solution:
+class Objective:
     def __init__(self, objective1, objective2):
         self.objective1 = objective1
         self.objective2 = objective2
 
-# Criando a lista de soluções
-solutions1 = [
-    Solution(17, 27),
-    Solution(19, 25),
-    Solution(18, 26),
-    Solution(21, 25),
-    Solution(19, 26),
-    Solution(19, 26),
-    Solution(18, 27),
-    Solution(19, 26),
-    Solution(19, 26),
-    Solution(18, 27),
-    Solution(18, 27),
-    Solution(24, 25),
-    Solution(20, 26),
-    Solution(20, 26),
-    Solution(20, 26),
-    Solution(20, 26),
-    Solution(20, 26),
-    Solution(19, 27),
-    Solution(20, 27),
-    Solution(21, 27)
-]
+# # Criando a lista de soluções
+# solutions1 = [
+#     Objective(17, 27),
+#     Objective(19, 25),
+#     Objective(18, 26),
+#     Objective(21, 25),
+#     Objective(19, 26),
+#     Objective(19, 26),
+#     Objective(18, 27),
+#     Objective(19, 26),
+#     Objective(19, 26),
+#     Objective(18, 27),
+#     Objective(18, 27),
+#     Objective(24, 25),
+#     Objective(20, 26),
+#     Objective(20, 26),
+#     Objective(20, 26),
+#     Objective(20, 26),
+#     Objective(20, 26),
+#     Objective(19, 27),
+#     Objective(20, 27),
+#     Objective(21, 27)
+# ]
 
 # Extraindo os objetivos para plotagem
 objective1 = [sol.objective1 for sol in solutions1]

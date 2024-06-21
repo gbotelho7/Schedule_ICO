@@ -673,9 +673,9 @@ function sendSelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteri
   document.getElementById('sendButton').addEventListener('click', function() {
 
 
-    otimizedSolutionFileName = document.getElementById('otimizedSolutionFileName').value;
-    roomsCharsFileName = document.getElementById('roomsCharsFileName').value;
-    scheduleFileName = document.getElementById('scheduleFileName').value;
+    // otimizedSolutionFileName = document.getElementById('otimizedSolutionFileName').value;
+    // roomsCharsFileName = document.getElementById('roomsCharsFileName').value;
+    // scheduleFileName = document.getElementById('scheduleFileName').value;
 
     console.log("nome ficheiro horario " + scheduleFileName)
     console.log("nome ficheiro caracteristicas " + roomsCharsFileName)

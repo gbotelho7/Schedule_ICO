@@ -1,6 +1,9 @@
+import os
 import random
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from matplotlib import pyplot as plt
+import numpy as np
 import pandas as pd
 from jmetal.core.problem import IntegerProblem
 from jmetal.core.solution import IntegerSolution
@@ -15,7 +18,9 @@ app = Flask(__name__)
 CORS(app)
 
 
+
 class RoomAssignmentProblem(IntegerProblem):
+
 
     def name(self) -> str:
         return 'Room Assignment Problem'
@@ -28,41 +33,35 @@ class RoomAssignmentProblem(IntegerProblem):
 
     def number_of_variables(self):
         return self.number_of_variables
+    
+    def selected_Otimization_Type(self):
+        return self.selected_Otimization_Type
+    
+    def selected_SingleObjective_Criterium(self):
+        return self.selected_SingleObjective_Criterium
 
 
-    def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame):
+    def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame, selected_Otimization_Type: str, selected_SingleObjective_Criterium: str):
         super(RoomAssignmentProblem, self).__init__()
         self.rooms_df = rooms_df
         self.schedule_df = schedule_df
 
+        self.selected_Otimization_Type = selected_Otimization_Type
+        self.selected_SingleObjective_Criterium = selected_SingleObjective_Criterium
+
         self.number_of_variables = len(schedule_df)
 
-        # if selected_Otimization_Type == "multi":
-        self.number_of_objectives = 2
-        self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
-        self.obj_labels = ['Overcapacity', 'Unmet Requirements']
+        if selected_Otimization_Type == "multi":
+            self.number_of_objectives = 2
+            self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
+            self.obj_labels = ['Overcapacity', 'Unmet Requirements']
 
-        # else:
-        #     self.number_of_objectives = 1
-        #     self.obj_directions = [self.MINIMIZE]
-        #     self.obj_labels = [selected_SingleObjective_Criterium]
+        else:
+            self.number_of_objectives = 1
+            self.obj_directions = [self.MINIMIZE]
+            self.obj_labels = [selected_SingleObjective_Criterium]
 
         self.number_of_constraints = 0  # No constraints
-
-    # def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame, ):
-    #     super(RoomAssignmentProblem, self).__init__()
-    #     self.rooms_df = rooms_df
-    #     self.schedule_df = schedule_df
-
-    #     self.number_of_variables = len(schedule_df)
-
-    #     self.number_of_objectives = 3
-    #     self.obj_directions = [self.MINIMIZE, self.MINIMIZE, self.MINIMIZE]
-    #     self.obj_labels = ['Overcapacity', 'Overlaps', 'Unmet Requirements']
-
-
-    #     self.number_of_constraints = 0  # No constraints
-
 
 
 
@@ -77,36 +76,43 @@ class RoomAssignmentProblem(IntegerProblem):
             room_index = solution.variables[i]
             room_info = self.rooms_df.iloc[room_index]
 
-            class_size = class_info['Inscritos no turno']
-            room_capacity = room_info['Capacidade Normal']
-            if class_size > room_capacity:
-                overcapacity_count += 1
-                
-            if room_index != -1:
-                room_info = self.rooms_df.iloc[room_index]
-                room_features = [col for col in self.rooms_df.columns[5:] if room_info[col] == 'X']
-                for requirement in class_requirements:
-                    if requirement == "Não necessita de sala":
-                        continue
-                    if not any(requirement in feature for feature in room_features):                    
-                        if (requirement == "Sala/anfiteatro aulas" and 
-                            ("Sala de Aulas normal" in room_features or "Anfiteatro aulas" in room_features)):
-                            unmet_requirements_count += 0
-                        elif (requirement == "Lab ISTA" and 
-                                any(feature for feature in room_features if "Laboratório" in feature and feature != "Laboratório de Informática")):
-                            unmet_requirements_count += 0
-                        elif (requirement == "Anfiteatro aulas" and "Sala/anfiteatro aulas" in room_features):
-                            unmet_requirements_count += 0
-                        else:
-                            unmet_requirements_count += 1
-                            break
-            else:
-                if class_requirements != "Não necessita de sala":
-                    unmet_requirements_count += 1
+            
+            if(self.selected_Otimization_Type == "multi" or self.selected_SingleObjective_Criterium == "Sobrelotações"):
+                class_size = class_info['Inscritos no turno']
+                room_capacity = room_info['Capacidade Normal']
+                if class_size > room_capacity:
+                    overcapacity_count += 1
 
+            if(self.selected_Otimization_Type == "multi" or self.selected_SingleObjective_Criterium== "Requisitos não cumpridos"):         
+                if room_index != -1:
+                    room_info = self.rooms_df.iloc[room_index]
+                    room_features = [col for col in self.rooms_df.columns[5:] if room_info[col] == 'X']
+                    for requirement in class_requirements:
+                        if requirement == "Não necessita de sala":
+                            continue
+                        if not any(requirement in feature for feature in room_features):                    
+                            if (requirement == "Sala/anfiteatro aulas" and 
+                                ("Sala de Aulas normal" in room_features or "Anfiteatro aulas" in room_features)):
+                                unmet_requirements_count += 0
+                            elif (requirement == "Lab ISTA" and 
+                                    any(feature for feature in room_features if "Laboratório" in feature and feature != "Laboratório de Informática")):
+                                unmet_requirements_count += 0
+                            elif (requirement == "Anfiteatro aulas" and "Sala/anfiteatro aulas" in room_features):
+                                unmet_requirements_count += 0
+                            else:
+                                unmet_requirements_count += 1
+                                break
+                else:
+                    if class_requirements != "Não necessita de sala":
+                        unmet_requirements_count += 1
 
-        solution.objectives[0] = overcapacity_count
-        solution.objectives[1] = unmet_requirements_count
+        if(self.selected_Otimization_Type == "multi"):
+            solution.objectives[0] = overcapacity_count
+            solution.objectives[1] = unmet_requirements_count
+        elif self.selected_SingleObjective_Criterium == "Sobrelotações":
+            solution.objectives[0] = overcapacity_count
+        else:
+            solution.objectives[0] = unmet_requirements_count
          
     def create_solution(self) -> IntegerSolution:
         solution = IntegerSolution(
@@ -167,10 +173,6 @@ class RoomAssignmentProblem(IntegerProblem):
     
 
 
-# selected_SingleObjective_Criterium = "sobreposições"
-# selected_Otimization_Type = "single"c
-
-    
 @app.route('/optimize', methods=['POST'])
 def optimizeSchedule():
     data = request.get_json()
@@ -200,7 +202,8 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     # schedule_df = pd.read_csv('HorarioDeExemplo.csv', delimiter=';', encoding="utf-8")
     # rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';', encoding="utf-8")
 
-    problem = RoomAssignmentProblem(rooms_df, schedule_df)
+    problem = RoomAssignmentProblem(rooms_df, schedule_df,selected_Otimization_Type, selected_SingleObjective_Criterium)
+
 
     # Define the crossover and mutation operators
     # crossover_operator = CXCrossover(probability=0.8)
@@ -212,8 +215,8 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     # Define the algorithm
     algorithm_NSGAII = NSGAII(
         problem=problem,
-        population_size=20,
-        offspring_population_size=200,
+        population_size=10,
+        offspring_population_size=10,
         mutation=mutation_operator,
         crossover=crossover_operator,
         termination_criterion=StoppingByEvaluations(max_evaluations=200)
@@ -222,8 +225,8 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     # Define the algorithm
     algorithm_Genetic = GeneticAlgorithm(
         problem=problem,
-        population_size=20,
-        offspring_population_size=200,
+        population_size=10,
+        offspring_population_size=10,
         mutation=mutation_operator,
         crossover=crossover_operator,
         termination_criterion=StoppingByEvaluations(max_evaluations=200)
@@ -246,11 +249,33 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     #     # print('Solution:', solution.variables)
     #     print('Objectives:', solution.objectives)
 
+    # # Inicializa a variável para armazenar a melhor solução encontrada
+    # best_solution = None
+    # best_objectives = [float('inf'), float('inf')]  # Inicializa com infinito para minimizar ambos os objetivos
 
+    # # Processa as soluções
+    # for solution in solutions_NSGAII:
+    #     # Verifica o valor dos objetivos da solução atual
+    #     current_objectives = solution.objectives
+        
+    #     if selected_Otimization_Type == 'multi':
+    #         # Para tipo 'multi', compara ambos os objetivos
+    #         if (current_objectives[0] < best_objectives[0]) or \
+    #            (current_objectives[0] == best_objectives[0] and current_objectives[1] < best_objectives[1]):
+    #             best_objectives = current_objectives
+    #             best_solution = solution
+    #     else:
+    #         # Para tipo 'single', compara apenas o primeiro objetivo
+    #         if current_objectives < best_objectives:
+    #             best_objectives = current_objectives
+    #             best_solution = solution
 
-    # # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
-    # solution_NSGAII = solutions_NSGAII[0]
+    # print(best_objectives)
+    # solution_NSGAII = best_solution
     # room_assignments = solution_NSGAII.variables
+
+
+
 
 
 
@@ -264,14 +289,205 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     # Get the results
     solutions_Genetic = algorithm_Genetic.get_result()
 
-    # Process the solutions
-
-    
-    print('Objectives:', solutions_Genetic.objectives)
-
-    # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
     solution_Genetic = solutions_Genetic
     room_assignments = solution_Genetic.variables
+
+
+
+    # # Extraindo os objetivos para plotagem
+    # objectiveSobrelotacoes_NSGAII = [sol.objectives[0] for sol in solutions_NSGAII]
+    # objectiveRequisitos_NSGAII = [sol.objectives[1] for sol in solutions_NSGAII]
+
+    # # Nome da pasta onde os gráficos serão salvos
+    # output_dir = filename_otimization + '_NSGAII_graphs'
+
+    # # Cria a pasta se ela não existir
+    # if not os.path.exists(output_dir):
+    #     os.makedirs(output_dir)
+
+    # # Gráfico de Dispersão
+    # plt.figure(figsize=(12, 8))
+    # plt.scatter(objectiveSobrelotacoes_NSGAII, objectiveRequisitos_NSGAII, color='blue')
+    # plt.title('Multi-objective Optimization Results', fontsize=16)
+    # plt.xlabel('Sobrelotações', fontsize=14)
+    # plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
+    # plt.xticks(fontsize=12)
+    # plt.yticks(fontsize=12)
+    # plt.grid(True)
+    # plt.xlim(10, 30)
+    # plt.ylim(10, 30)
+    # plt.savefig(os.path.join(output_dir, 'scatter_plot.png'))
+    # plt.show()
+
+    # # Identificação da fronteira de Pareto
+    # def pareto_frontier(obj1, obj2, maxX=True, maxY=True):
+    #     sorted_list = sorted([[obj1[i], obj2[i]] for i in range(len(obj1))], reverse=maxX)
+    #     p_front = [sorted_list[0]]    
+    #     for pair in sorted_list[1:]:
+    #         if maxY:
+    #             if pair[1] >= p_front[-1][1]:
+    #                 p_front.append(pair)
+    #         else:
+    #             if pair[1] <= p_front[-1][1]:
+    #                 p_front.append(pair)
+    #     return np.array(p_front)
+
+    # # Obtendo a fronteira de Pareto
+    # pareto = pareto_frontier(objectiveSobrelotacoes_NSGAII, objectiveRequisitos_NSGAII, maxX=False, maxY=True)
+
+    # # Gráfico de Dispersão com Fronteira de Pareto
+    # plt.figure(figsize=(12, 8))
+    # plt.scatter(objectiveSobrelotacoes_NSGAII, objectiveRequisitos_NSGAII, color='blue', label='Solutions')
+    # plt.plot(pareto[:, 0], pareto[:, 1], color='red', linestyle='--', marker='o', label='Pareto Frontier')
+    # plt.title('Pareto Frontier', fontsize=16)
+    # plt.xlabel('Sobrelotações', fontsize=14)
+    # plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
+    # plt.xticks(fontsize=12)
+    # plt.yticks(fontsize=12)
+    # plt.legend()
+    # plt.grid(True)
+    # plt.xlim(10, 30)
+    # plt.ylim(10, 30)
+    # plt.savefig(os.path.join(output_dir, 'pareto_frontier.png'))
+    # plt.show()
+
+    # # Boxplot para Objective 1
+    # plt.figure(figsize=(12, 8))
+    # plt.boxplot(objectiveSobrelotacoes_NSGAII)
+    # plt.title('Boxplot of Objective 1', fontsize=16)
+    # plt.ylabel('Value', fontsize=14)
+    # plt.xticks([1], ['Sobrelotações'], fontsize=12)
+    # plt.grid(True)
+    # plt.savefig(os.path.join(output_dir, 'boxplot_objective1.png'))
+    # plt.show()
+
+    # # Boxplot para Objective 2
+    # plt.figure(figsize=(12, 8))
+    # plt.boxplot(objectiveRequisitos_NSGAII)
+    # plt.title('Boxplot of Objective 2', fontsize=16)
+    # plt.ylabel('Value', fontsize=14)
+    # plt.xticks([1], ['Requisitos Não Cumpridos'], fontsize=12)
+    # plt.grid(True)
+    # plt.savefig(os.path.join(output_dir, 'boxplot_objective2.png'))
+    # plt.show()
+
+    # # Histograma para Objective 1
+    # plt.figure(figsize=(12, 8))
+    # plt.hist(objectiveSobrelotacoes_NSGAII, bins=10, color='blue', alpha=0.7)
+    # plt.title('Histogram of Objective 1', fontsize=16)
+    # plt.xlabel('Sobrelotações', fontsize=14)
+    # plt.ylabel('Frequency', fontsize=14)
+    # plt.grid(True)
+    # plt.savefig(os.path.join(output_dir, 'histogram_objective1.png'))
+    # plt.show()
+
+    # # Histograma para Objective 2
+    # plt.figure(figsize=(12, 8))
+    # plt.hist(objectiveRequisitos_NSGAII, bins=10, color='blue', alpha=0.7)
+    # plt.title('Histogram of Objective 2', fontsize=16)
+    # plt.xlabel('Requisitos Não Cumpridos', fontsize=14)
+    # plt.ylabel('Frequency', fontsize=14)
+    # plt.grid(True)
+    # plt.savefig(os.path.join(output_dir, 'histogram_objective2.png'))
+    # plt.show()
+
+
+    # Extraindo os objetivos para plotagem
+    objectiveSobrelotacoes_Genetic = [solution_Genetic.objectives[0]]
+    objectiveRequisitos_Genetic = [solution_Genetic.objectives[1]]
+
+    # Nome da pasta onde os gráficos serão salvos
+    output_dir = filename_otimization + '_Genetic_graphs'
+
+    # Cria a pasta se ela não existir
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Gráfico de Dispersão
+    plt.figure(figsize=(12, 8))
+    plt.scatter(objectiveSobrelotacoes_Genetic, objectiveRequisitos_Genetic, color='blue')
+    plt.title('Multi-objective Optimization Results', fontsize=16)
+    plt.xlabel('Sobrelotações', fontsize=14)
+    plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.grid(True)
+    plt.xlim(10, 30)
+    plt.ylim(10, 30)
+    plt.savefig(os.path.join(output_dir, 'scatter_plot.png'))
+    plt.show()
+
+    # Identificação da fronteira de Pareto
+    def pareto_frontier(obj1, obj2, maxX=True, maxY=True):
+        sorted_list = sorted([[obj1[i], obj2[i]] for i in range(len(obj1))], reverse=maxX)
+        p_front = [sorted_list[0]]    
+        for pair in sorted_list[1:]:
+            if maxY:
+                if pair[1] >= p_front[-1][1]:
+                    p_front.append(pair)
+            else:
+                if pair[1] <= p_front[-1][1]:
+                    p_front.append(pair)
+        return np.array(p_front)
+
+    # Obtendo a fronteira de Pareto
+    pareto = pareto_frontier(objectiveSobrelotacoes_Genetic, objectiveRequisitos_Genetic, maxX=False, maxY=True)
+
+    # Gráfico de Dispersão com Fronteira de Pareto
+    plt.figure(figsize=(12, 8))
+    plt.scatter(objectiveSobrelotacoes_Genetic, objectiveRequisitos_Genetic, color='blue', label='Solutions')
+    plt.plot(pareto[:, 0], pareto[:, 1], color='red', linestyle='--', marker='o', label='Pareto Frontier')
+    plt.title('Pareto Frontier', fontsize=16)
+    plt.xlabel('Sobrelotações', fontsize=14)
+    plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.legend()
+    plt.grid(True)
+    plt.xlim(10, 30)
+    plt.ylim(10, 30)
+    plt.savefig(os.path.join(output_dir, 'pareto_frontier.png'))
+    plt.show()
+
+    # Boxplot para Objective 1
+    plt.figure(figsize=(12, 8))
+    plt.boxplot(objectiveSobrelotacoes_Genetic)
+    plt.title('Boxplot of Objective 1', fontsize=16)
+    plt.ylabel('Value', fontsize=14)
+    plt.xticks([1], ['Sobrelotações'], fontsize=12)
+    plt.grid(True)
+    plt.savefig(os.path.join(output_dir, 'boxplot_objective1.png'))
+    plt.show()
+
+    # Boxplot para Objective 2
+    plt.figure(figsize=(12, 8))
+    plt.boxplot(objectiveRequisitos_Genetic)
+    plt.title('Boxplot of Objective 2', fontsize=16)
+    plt.ylabel('Value', fontsize=14)
+    plt.xticks([1], ['Requisitos Não Cumpridos'], fontsize=12)
+    plt.grid(True)
+    plt.savefig(os.path.join(output_dir, 'boxplot_objective2.png'))
+    plt.show()
+
+    # Histograma para Objective 1
+    plt.figure(figsize=(12, 8))
+    plt.hist(objectiveSobrelotacoes_Genetic, bins=10, color='blue', alpha=0.7)
+    plt.title('Histogram of Objective 1', fontsize=16)
+    plt.xlabel('Sobrelotações', fontsize=14)
+    plt.ylabel('Frequency', fontsize=14)
+    plt.grid(True)
+    plt.savefig(os.path.join(output_dir, 'histogram_objective1.png'))
+    plt.show()
+
+    # Histograma para Objective 2
+    plt.figure(figsize=(12, 8))
+    plt.hist(objectiveRequisitos_Genetic, bins=10, color='blue', alpha=0.7)
+    plt.title('Histogram of Objective 2', fontsize=16)
+    plt.xlabel('Requisitos Não Cumpridos', fontsize=14)
+    plt.ylabel('Frequency', fontsize=14)
+    plt.grid(True)
+    plt.savefig(os.path.join(output_dir, 'histogram_objective2.png'))
+    plt.show()
 
 
 
