@@ -668,16 +668,18 @@ function createModifiableTabulator(scheduleData, elementList) {
 
 
 
-function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList, carateristicasSalas, otimizedSolutionFileName){
+function sendSelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
 
   document.getElementById('sendButton').addEventListener('click', function() {
 
 
     otimizedSolutionFileName = document.getElementById('otimizedSolutionFileName').value;
     roomsCharsFileName = document.getElementById('roomsCharsFileName').value;
-    scheduleFileName = document.getElementById('otimizedSolutionFileName').value;
+    scheduleFileName = document.getElementById('scheduleFileName').value;
 
-    console.log("nome ficheiro" + scheduleFileName)
+    console.log("nome ficheiro horario " + scheduleFileName)
+    console.log("nome ficheiro caracteristicas " + roomsCharsFileName)
+    console.log("nome ficheiro solucao " + otimizedSolutionFileName)
 
     if(!scheduleFileName){
       alert("Por favor, insira o nome do ficheiro do horário")
@@ -698,7 +700,7 @@ function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDiction
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({scheduleFileName: scheduleFileName, roomsCharsFileName: roomsCharsFileName, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, carateristicasSalas: carateristicasSalas, selectedOtimizationType: selectedOtimizationType, selectedSingleObjectiveCriterium: selectedSingleObjectiveCriterium, otimizedSolutionFileName: otimizedSolutionFileName})
+        body: JSON.stringify({scheduleFileName: scheduleFileName, roomsCharsFileName: roomsCharsFileName, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, selectedOtimizationType: selectedOtimizationType, selectedSingleObjectiveCriterium: selectedSingleObjectiveCriterium, otimizedSolutionFileName: otimizedSolutionFileName})
     })
     .then(response => response.json())
     .then(data => {
@@ -774,7 +776,7 @@ function createTabulator(schedulesData, heatmapContainer, downloadContainer, mod
       modifiableDataTabulator = createModifiableTabulator(selectedScheduleData, elementList)
       insertDownloadButton(downloadContainer, selectedScheduleData, elementList);
       scheduleOptimization.style.display = "block"
-      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList, carateristicasSalas)
+      sendSelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteriumList, textCriteriumList, carateristicasSalas)
     }
     else {
       heatmapContainer.innerHTML = ""

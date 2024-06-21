@@ -179,18 +179,19 @@ def optimizeSchedule():
     selected_SingleObjective_Criterium = data['selectedSingleObjectiveCriterium']
     selected_Otimization_Type = data['selectedOtimizationType']
     filename_otimization = data['otimizedSolutionFileName']
-    optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Type, selected_SingleObjective_Criterium, filename_otimization)
+    optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Type, filename_otimization,selected_SingleObjective_Criterium)
 
     ## APAGAR LIXO
     return jsonify({"dummy": "ola"})
 
 
 
-def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Type, selected_SingleObjective_Criterium="Null", filename_otimization="Null" ):
 
+def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Type, filename_otimization,selected_SingleObjective_Criterium="Null" ):
+    print(schedule_File_Name)
+    print(schedule_File_Name)
     rooms_df = pd.read_csv(rooms_Chars_FileName, delimiter=';', encoding="utf-8")
     schedule_df = pd.read_csv(schedule_File_Name, delimiter=';', encoding="utf-8")
-    print(type(schedule_df))
     selected_Otimization_Type = selected_Otimization_Type
     selected_SingleObjective_Criterium = selected_SingleObjective_Criterium
 
@@ -211,8 +212,8 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     # Define the algorithm
     algorithm_NSGAII = NSGAII(
         problem=problem,
-        population_size=10,
-        offspring_population_size=10,
+        population_size=20,
+        offspring_population_size=200,
         mutation=mutation_operator,
         crossover=crossover_operator,
         termination_criterion=StoppingByEvaluations(max_evaluations=200)
@@ -221,8 +222,8 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     # Define the algorithm
     algorithm_Genetic = GeneticAlgorithm(
         problem=problem,
-        population_size=10,
-        offspring_population_size=10,
+        population_size=20,
+        offspring_population_size=200,
         mutation=mutation_operator,
         crossover=crossover_operator,
         termination_criterion=StoppingByEvaluations(max_evaluations=200)
@@ -231,51 +232,46 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
 
 
 
-    progress_bar = ProgressBarObserver(max=200)
-    algorithm_NSGAII.observable.register(progress_bar)
-
-    # Run the algorithm
-    algorithm_NSGAII.run()
-
-    # Get the results
-    solutions_NSGAII = algorithm_NSGAII.get_result()
-
-    # Process the solutions
-    for solution in solutions_NSGAII:
-        # print('Solution:', solution.variables)
-        print('Objectives:', solution.objectives)
-
-
-
-    # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
-    solution_NSGAII = solutions_NSGAII[0]
-    room_assignments = solution_NSGAII.variables
-
-    # print(solution_NSGAII.objectives)
-    # print(solution_NSGAII.variables)
-
-
-
-
-
-
     # progress_bar = ProgressBarObserver(max=200)
-    # algorithm_Genetic.observable.register(progress_bar)
+    # algorithm_NSGAII.observable.register(progress_bar)
 
     # # Run the algorithm
-    # algorithm_Genetic.run()
+    # algorithm_NSGAII.run()
 
     # # Get the results
-    # solutions_Genetic = algorithm_Genetic.get_result()
+    # solutions_NSGAII = algorithm_NSGAII.get_result()
 
     # # Process the solutions
+    # for solution in solutions_NSGAII:
+    #     # print('Solution:', solution.variables)
+    #     print('Objectives:', solution.objectives)
 
-    # print('Solution:', solutions_Genetic.variables)
-    # print('Objectives:', solutions_Genetic.objectives)
+
 
     # # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
-    # solution_Genetic = solutions_Genetic
-    # room_assignments = solution_Genetic.variables
+    # solution_NSGAII = solutions_NSGAII[0]
+    # room_assignments = solution_NSGAII.variables
+
+
+
+
+    progress_bar = ProgressBarObserver(max=200)
+    algorithm_Genetic.observable.register(progress_bar)
+
+    # Run the algorithm
+    algorithm_Genetic.run()
+
+    # Get the results
+    solutions_Genetic = algorithm_Genetic.get_result()
+
+    # Process the solutions
+
+    
+    print('Objectives:', solutions_Genetic.objectives)
+
+    # Assuming 'solution' is the first solution in the obtained solutions from NSGA-II
+    solution_Genetic = solutions_Genetic
+    room_assignments = solution_Genetic.variables
 
 
 
