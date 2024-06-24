@@ -642,7 +642,7 @@ function createModifiableTabulator(scheduleData, elementList) {
       headerFilter: "input",
     };
 
-    // Check if 'key' is not present in the values of the 'dictionary'
+    // Check if 'key' is not present sendin the values of the 'dictionary'
     if (!dictionaryValues.includes(key)) {
       console.log(dictionaryValues)
       console.log(key)
@@ -668,7 +668,7 @@ function createModifiableTabulator(scheduleData, elementList) {
 
 
 
-function sendSelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
+function SelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
 
   document.getElementById('sendButton').addEventListener('click', function() {
 
