@@ -668,14 +668,11 @@ function createModifiableTabulator(scheduleData, elementList) {
 
 
 
-function SelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
+function sendSelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
 
   document.getElementById('sendButton').addEventListener('click', function() {
 
 
-    // otimizedSolutionFileName = document.getElementById('otimizedSolutionFileName').value;
-    // roomsCharsFileName = document.getElementById('roomsCharsFileName').value;
-    // scheduleFileName = document.getElementById('scheduleFileName').value;
 
     console.log("nome ficheiro horario " + scheduleFileName)
     console.log("nome ficheiro caracteristicas " + roomsCharsFileName)
