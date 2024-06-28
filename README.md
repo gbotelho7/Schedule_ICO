@@ -5,7 +5,7 @@ Este projeto tinha como objetivo exploraar e concretizar uma solução para otim
 
 ## Funcionalidades
 - Otimização single e multiobjetivo para alocação de salas.
-- Lida com a capacidade das salas e requisitos específicos.
+- Lida com a capacidade das salas e requisitos pedidos.
 - Gera vários gráficos e plots para visualizar os resultados da otimização.
 ## Como correr o algoritmo
 ### Via local
