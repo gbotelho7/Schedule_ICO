@@ -13,4 +13,4 @@ Aceder ao ficheiros:
 docker container ls
 docker exec -it room-assignment-OS /bin/bash
 
-ou utilizado o Docker Desktop
+ou utilizando o Docker Desktop
