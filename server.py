@@ -1,254 +1,347 @@
-import re
+import os
+import random
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from jmetal.core.problem import IntegerProblem
+from jmetal.core.solution import IntegerSolution
+from jmetal.operator import IntegerPolynomialMutation
+from jmetal.algorithm.singleobjective.genetic_algorithm import GeneticAlgorithm
+from jmetal.algorithm.multiobjective.nsgaii import NSGAII
+from jmetal.operator.crossover import IntegerSBXCrossover
+from jmetal.util.observer import ProgressBarObserver
+from jmetal.util.termination_criterion import StoppingByEvaluations
 
 app = Flask(__name__)
 CORS(app)
 
+class RoomAssignmentProblem(IntegerProblem):
 
-def criterium_overcrowding(df):
-    count_overcrowding = 0
-    count_total_students_overcrowding = 0
+    def name(self) -> str:
+        return 'Room Assignment Problem'
 
-    # Convertendo as colunas relevantes para números
-    df['Lotação'] = pd.to_numeric(df['Lotação'], errors='coerce')
-    df['Inscritos no turno'] = pd.to_numeric(df['Inscritos no turno'], errors='coerce')
+    def number_of_constraints(self):
+        return self.number_of_constraints
 
-    # Verificando se há valores NaN e substituindo por 0 (ou outra lógica desejada)
-    df['Lotação'] = df['Lotação'].fillna(0)
-    df['Inscritos no turno'] = df['Inscritos no turno'].fillna(0)
+    def number_of_objectives(self):
+        return self.number_of_objectives
 
-    for index, row in df.iterrows():
-        lotacao = row['Lotação']
-        inscritos = row['Inscritos no turno']
-
-        if inscritos > lotacao:
-            count_overcrowding += 1
-            count_total_students_overcrowding += int(inscritos - lotacao)
-            df.at[index, 'Sobrelotações'] = True
-        else:
-            df.at[index, 'Sobrelotações'] = False
-
-    criterium_array = {
-        'Sobrelotações': count_overcrowding,
-        'Alunos a mais (Sobrelotações)': count_total_students_overcrowding
-    }
-
-    print("Criterium Overcrowding Array:", criterium_array)  # Debug message
-
-    return df, criterium_array
-
-def criterium_overlapping(df, hour_format):
-    # Especificando o formato de data e hora
-    df['Início'] = pd.to_datetime(df['Início'], format=hour_format)
-    df['Fim'] = pd.to_datetime(df['Fim'], format=hour_format)
-
-    classes_by_date = df.groupby('Dia')
-    count_overlapping = 0
-
-    for date, classes_for_date in classes_by_date:
-        classes_for_date = classes_for_date.sort_values('Início').reset_index(drop=True)
-        for i in range(len(classes_for_date) - 1):
-            is_true = False
-            for j in range(i + 1, len(classes_for_date)):
-                if (classes_for_date.at[i, 'Início'] < classes_for_date.at[j, 'Fim'] and classes_for_date.at[i, 'Fim'] > classes_for_date.at[j, 'Início']) or \
-                   (classes_for_date.at[j, 'Início'] < classes_for_date.at[i, 'Fim'] and classes_for_date.at[j, 'Fim'] > classes_for_date.at[i, 'Início']):
-                    count_overlapping += 1
-                    is_true = True
-            if is_true:
-                df.at[classes_for_date.index[i], 'Sobreposições'] = True
-            else:
-                df.at[classes_for_date.index[i], 'Sobreposições'] = False
-
-    criterium_array = {
-        'Sobreposições': count_overlapping
-    }
-
-    print("Criterium Overlapping Array:", criterium_array)  # Debug message
-
-    return df, criterium_array 
-
-
-
-def criterium_class_requisites(df, class_room_dictionary):
-    countRequisitesNotMet = 0
-    countNoClassroom = 0
-
-    for index, entry in df.iterrows():
-        askedRequisites = entry['Características da sala pedida para a aula']
-        roomName = entry['Sala da aula']
-
-        if roomName in class_room_dictionary:
-            if askedRequisites not in class_room_dictionary[roomName]:
-                countRequisitesNotMet += 1
-                df.at[index, 'Requisitos não cumpridos'] = True
-                df.at[index, 'Aulas Sem Sala'] = False
-            else:
-                df.at[index, 'Requisitos não cumpridos'] = False
-                df.at[index, 'Aulas Sem Sala'] = False
-        elif roomName == "" and askedRequisites != "Não necessita de sala":
-            countNoClassroom += 1
-            df.at[index, 'Requisitos não cumpridos'] = True
-            df.at[index, 'Aulas Sem Sala'] = True
-        else:
-            df.at[index, 'Requisitos não cumpridos'] = False
-            df.at[index, 'Aulas Sem Sala'] = False
-
-    criterium_array = {
-        'Requisitos não cumpridos': countRequisitesNotMet,
-        'Aulas Sem Sala': countNoClassroom
-    }
-
-    print(criterium_array)
-
-    return df, criterium_array
-
-def convert_js_format_to_python(js_format):
-    format_map = {
-        'HH:mm:ss': '%H:%M:%S',
-        'hh:mm:ss A': '%I:%M:%S %p',
-        'HH:mm': '%H:%M',
-        'hh:mm A': '%I:%M %p',
-
-        'YYYY-MM-DD': '%Y-%m-%d',
-        'DD/MM/YYYY': '%d/%m/%Y',
-        'MM/DD/YYYY': '%m/%d/%Y',
-        'YYYY/MM/DD': '%Y/%m/%d'
-    }
-
-    return format_map.get(js_format, js_format)
-
-import math
-
-
-
-def evaluate_dynamic_formula_criteria(df, expressions):
-    criteria_results = {}
+    def number_of_variables(self):
+        return self.number_of_variables
     
-    for expression in expressions:
-        expression = expression.strip()  # Remove any leading or trailing whitespace
-        found_column_names = extract_column_names_from_expression(expression, df.columns)
-        true_count = 0  # Counter for the number of true rows
-        error_counter = 0
-        
-        for index, row in df.iterrows():
-            error_occurred = False
-            row_specific_expression = expression
+    def selected_Otimization_Type(self):
+        return self.selected_Otimization_Type
+    
+    def selected_SingleObjective_Criterium(self):
+        return self.selected_SingleObjective_Criterium
+
+
+    def __init__(self, rooms_df: pd.DataFrame, schedule_df: pd.DataFrame, selected_Otimization_Type: str, selected_SingleObjective_Criterium: str):
+        super(RoomAssignmentProblem, self).__init__()
+        self.rooms_df = rooms_df
+        self.schedule_df = schedule_df
+
+        self.selected_Otimization_Type = selected_Otimization_Type
+        self.selected_SingleObjective_Criterium = selected_SingleObjective_Criterium
+
+        self.number_of_variables = len(schedule_df)
+
+        if selected_Otimization_Type == "multi":
+            self.number_of_objectives = 2
+            self.obj_directions = [self.MINIMIZE, self.MINIMIZE]
+            self.obj_labels = ['Overcapacity', 'Unmet Requirements']
+
+        else:
+            self.number_of_objectives = 1
+            self.obj_directions = [self.MINIMIZE]
+            self.obj_labels = [selected_SingleObjective_Criterium]
+
+        self.number_of_constraints = 0  # No constraints
+
+    def evaluate(self, solution: IntegerSolution):
+        overcapacity_count = 0
+        unmet_requirements_count = 0
+
+        for i in range(self.number_of_variables):
+            class_info = self.schedule_df.iloc[i]
+            class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
+            room_index = solution.variables[i]
+            room_info = self.rooms_df.iloc[room_index]
+
             
-            for column_name in found_column_names:
-                value = row[column_name]
-                row_specific_expression = row_specific_expression.replace(column_name, str(value))
-            
-            try:
-                result = eval(row_specific_expression)
-                if result:
-                    true_count += 1  # Increment the counter if the expression is true for this row
-                    df.at[index, expression] = True
+            if(self.selected_Otimization_Type == "multi" or self.selected_SingleObjective_Criterium == "Sobrelotações"):
+                class_size = class_info['Inscritos no turno']
+                room_capacity = room_info['Capacidade Normal']
+                if class_size > room_capacity:
+                    overcapacity_count += 1
+
+            if(self.selected_Otimization_Type == "multi" or self.selected_SingleObjective_Criterium== "Requisitos não cumpridos"):         
+                if room_index != -1:
+                    room_info = self.rooms_df.iloc[room_index]
+                    room_features = [col for col in self.rooms_df.columns[5:] if room_info[col] == 'X']
+                    for requirement in class_requirements:
+                        if requirement == "Não necessita de sala":
+                            continue
+                        if not any(requirement in feature for feature in room_features):                    
+                            if (requirement == "Sala/anfiteatro aulas" and 
+                                ("Sala de Aulas normal" in room_features or "Anfiteatro aulas" in room_features)):
+                                unmet_requirements_count += 0
+                            elif (requirement == "Lab ISTA" and 
+                                    any(feature for feature in room_features if "Laboratório" in feature and feature != "Laboratório de Informática")):
+                                unmet_requirements_count += 0
+                            elif (requirement == "Anfiteatro aulas" and "Sala/anfiteatro aulas" in room_features):
+                                unmet_requirements_count += 0
+                            else:
+                                unmet_requirements_count += 1
+                                break
                 else:
-                    df.at[index, expression] = False
-            except Exception as error:
-                print(f"Error evaluating expression for row {index}: {error}")
-                error_occurred = True
-                error_counter += 1
-                df.at[index, expression] = False
-        
-        if error_counter == len(df):
-            print(f"Ocorreu um erro na expressão '{expression}' e por isso não foram adicionados novos critérios, por favor, corrija a fórmula!")
-        
-        criteria_results[expression] = true_count
-    
-    print(criteria_results)
-    
-    return df, criteria_results
+                    if class_requirements != "Não necessita de sala":
+                        unmet_requirements_count += 1
 
-# Example usage:
-# Assuming df is your DataFrame and 'expressions' is a string of comma-separated expressions
-# df, results = evaluate_dynamic_formula_criteria(df, 'expression1, expression2, expression3')
+        if(self.selected_Otimization_Type == "multi"):
+            solution.objectives[0] = overcapacity_count
+            solution.objectives[1] = unmet_requirements_count
+        elif self.selected_SingleObjective_Criterium == "Sobrelotações":
+            solution.objectives[0] = overcapacity_count
+        else:
+            solution.objectives[0] = unmet_requirements_count
+         
+    def create_solution(self) -> IntegerSolution:
+        solution = IntegerSolution(
+            number_of_objectives=self.number_of_objectives,
+            number_of_constraints=self.number_of_constraints,
+            lower_bound=[-1] * self.number_of_variables,  # Lower bound for each variable
+            upper_bound=[len(self.rooms_df) - 1] * self.number_of_variables  # Upper bound for each variable
+        )
 
+        # Ordenar salas por capacidade para tentativa de alocação mais adequada
+        sorted_rooms = self.rooms_df.sort_values(by='Capacidade Normal').reset_index()
 
-def extract_column_names_from_expression(expression, all_column_names):
-    found_column_names = []
-    for column_name in all_column_names:
-        if column_name in expression:
-            found_column_names.append(column_name)
-    return found_column_names
+        for i in range(self.number_of_variables):
+            class_info = self.schedule_df.iloc[i]
+            class_size = class_info['Inscritos no turno']
+            class_requirements = str(class_info['Características da sala pedida para a aula']).split(', ')
 
-
-
-def check_for_exact_word_match(expression, input_word):
-    regex_string = fr'\b{re.escape(input_word)}\b(?![\w-])'
-    regex = re.compile(regex_string)
-    return bool(regex.search(expression))
-
-def evaluate_dynamic_text_criteria(selected_schedule_data_df, criteria_list):
-    results = {}
-    
-    for column, input_text in criteria_list:
-        input_parsed = input_text.replace('.', ' ')  # Problema com o Tabulator
-        field_name = f"{column}={input_parsed}"
-        true_count = 0
-        
-        for index, row in selected_schedule_data_df.iterrows():
-            if check_for_exact_word_match(row[column], input_text):
-                selected_schedule_data_df.at[index, field_name] = True
-                true_count += 1
+            if 'Não necessita de sala' not in class_requirements:
+                # Tentar encontrar uma sala adequada
+                assigned = False
+                for j, room_info in sorted_rooms.iterrows():
+                    room_capacity = room_info['Capacidade Normal']
+                    if class_size <= room_capacity:
+                        room_features = [col for col in self.rooms_df.columns[5:] if room_info[col] == 'X']
+                        if all(req in room_features for req in class_requirements):
+                            solution.variables[i] = room_info['index']
+                            assigned = True
+                            break
+                        else:
+                            for requirement in class_requirements:
+                                if requirement == "Não necessita de sala":
+                                    continue
+                                if not any(requirement in feature for feature in room_features):
+                                    if (requirement == "Sala/anfiteatro aulas" and ("Sala de Aulas normal" in room_features or "Anfiteatro aulas" in room_features)):
+                                        solution.variables[i] = room_info['index']
+                                        assigned = True
+                                        break
+                                    elif (requirement == "Lab ISTA" and any(feature for feature in room_features if "Laboratório" in feature and feature != "Laboratório de Informática")):
+                                        solution.variables[i] = room_info['index']
+                                        assigned = True
+                                        break
+                                    elif (requirement == "Anfiteatro aulas" and "Sala/anfiteatro aulas" in room_features):
+                                        solution.variables[i] = room_info['index']
+                                        assigned = True
+                                        break
+                                    else:
+                                        #print("entrei")
+                                        #unmet_requirements_count += 1
+                                        break
+                # Se não encontrar uma sala ideal, atribuir aleatoriamente dentro dos limites
+                if not assigned:
+                    solution.variables[i] = random.randint(0, len(self.rooms_df) - 1)
             else:
-                selected_schedule_data_df.at[index, field_name] = False
-        
-        results[field_name] = true_count
+                solution.variables[i] = -1
 
-    print(results)
+        return solution
 
-    return selected_schedule_data_df, results
+# Identificação da fronteira de Pareto
+def pareto_frontier(obj1, obj2, maxX=True, maxY=True):
+    sorted_list = sorted([[obj1[i], obj2[i]] for i in range(len(obj1))], reverse=maxX)
+    p_front = [sorted_list[0]]
+    for pair in sorted_list[1:]:
+        if maxY:
+            if pair[1] >= p_front[-1][1]:
+                p_front.append(pair)
+        else:
+            if pair[1] <= p_front[-1][1]:
+                p_front.append(pair)
+    return np.array(p_front)
 
-
-@app.route('/process', methods=['POST'])
-def process_message():
+@app.route('/optimize', methods=['POST'])
+def optimizeSchedule():
     data = request.get_json()
-    selected_schedule_data = data['selectedScheduleData']
-    class_room_dictionary = data['classRoomDictionary']
-    hour_format = data['hourFormat']
-    date_format = data['dateFormat']
-    formula_criterium_list = data['formulaCriteriumList']
-    print(formula_criterium_list)
-    text_criterium_list = data['textCriteriumList']
-    print(text_criterium_list)
+    schedule_File_Name = data['scheduleFileName']
+    rooms_Chars_FileName = data['roomsCharsFileName']
+    selected_SingleObjective_Criterium = data['selectedSingleObjectiveCriterium']
+    selected_Otimization_Type = data['selectedOtimizationType']
+    filename_otimization = data['otimizedSolutionFileName']
+    optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Type, filename_otimization,selected_SingleObjective_Criterium)
 
-    hour_format = convert_js_format_to_python(hour_format)
-    date_format = convert_js_format_to_python(date_format)
+    return jsonify({"status": "Otimização concluída"})
 
+def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Type, filename_otimization,selected_SingleObjective_Criterium="Null" ):
+    print(schedule_File_Name)
+    rooms_df = pd.read_csv(rooms_Chars_FileName, delimiter=';', encoding="utf-8")
+    schedule_df = pd.read_csv(schedule_File_Name, delimiter=';', encoding="utf-8")
+    selected_Otimization_Type = selected_Otimization_Type
+    selected_SingleObjective_Criterium = selected_SingleObjective_Criterium
 
-    selected_schedule_data_df = pd.DataFrame(selected_schedule_data)
-
-    
-    show_selected_schedule_data_df = selected_schedule_data_df.head(2)
-
-    #print(show_selected_schedule_data_df)
-    
-    selected_schedule_data_df, overcrowding_criterium = criterium_overcrowding(selected_schedule_data_df)
-    # df, overlapping_criterium = criterium_overlapping(selected_schedule_data_df, hour_format)
-    # selected_schedule_data_df, class_requisites_criterium = criterium_class_requisites(selected_schedule_data_df, class_room_dictionary)
-    
-    # expression = "Lotação - Inscritos no turno > 20"
-    # dynamic_evaluated_df, expression_criterium = evaluate_dynamic_formula_criterium(selected_schedule_data_df, expression)
-
-    # criteriums = {**overcrowding_criterium, **overlapping_criterium, **class_requisites_criterium} 
-    # criteriums = {**overcrowding_criterium, **expression_criterium}
-
-    # print("Criteriums:", criteriums)  # Debug message
-
-    # return jsonify({"criteriums": criteriums})
-
-    df, formulaCriteriaResults = evaluate_dynamic_formula_criteria(selected_schedule_data_df, formula_criterium_list)
-
-    print(formulaCriteriaResults)
-
-    selected_schedule_data_df, textCriteriaResults = evaluate_dynamic_text_criteria(selected_schedule_data_df, text_criterium_list)
-    print(textCriteriaResults)
+    problem = RoomAssignmentProblem(rooms_df, schedule_df,selected_Otimization_Type, selected_SingleObjective_Criterium)
 
 
+    # Define the crossover and mutation operators
+    # crossover_operator = CXCrossover(probability=0.8)
+    crossover_operator = IntegerSBXCrossover(probability=0.8)
+    mutation_operator = IntegerPolynomialMutation(probability=0.2)
+
+    if selected_Otimization_Type == "multi":
+        # Define the NSGA-II algorithm for multi-objective optimization
+        algorithm = NSGAII(
+            problem=problem,
+            population_size=10,
+            offspring_population_size=10,
+            mutation=mutation_operator,
+            crossover=crossover_operator,
+            termination_criterion=StoppingByEvaluations(max_evaluations=200)
+        )
+    else:
+        # Define the Genetic Algorithm for single-objective optimization
+        algorithm = GeneticAlgorithm(
+            problem=problem,
+            population_size=10,
+            offspring_population_size=10,
+            mutation=mutation_operator,
+            crossover=crossover_operator,
+            termination_criterion=StoppingByEvaluations(max_evaluations=200)
+        )
+
+    progress_bar = ProgressBarObserver(max=200)
+    algorithm.observable.register(progress_bar)
+
+    # Run the algorithm
+    algorithm.run()
+
+    # Get the results
+    solutions = algorithm.get_result()
+
+    if selected_Otimization_Type == "multi":
+        # Extract objectives for multi-objective optimization
+        objectiveSobrelotacoes = [solution.objectives[0] for solution in solutions]
+        objectiveRequisitos = [solution.objectives[1] for solution in solutions]
+    else:
+        solution = solutions
+        if selected_SingleObjective_Criterium == "Sobrelotações":
+            objectiveSobrelotacoes = [solution.objectives[0]]
+            objectiveRequisitos = []
+        else:
+            objectiveSobrelotacoes = []
+            objectiveRequisitos = [solution.objectives[0]]
+
+    # Nome da pasta onde os gráficos serão salvos
+    output_dir = filename_otimization + '_graphs'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    if selected_Otimization_Type == "multi":
+        plt.figure(figsize=(12, 8))
+        plt.scatter(objectiveSobrelotacoes, objectiveRequisitos, color='blue')
+        plt.title('Multi-objective Optimization Results', fontsize=16)
+        plt.xlabel('Sobrelotações', fontsize=14)
+        plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'scatter_plot.png'))
+        plt.show()
+
+        pareto = pareto_frontier(objectiveSobrelotacoes, objectiveRequisitos, maxX=False, maxY=True)
+        plt.figure(figsize=(12, 8))
+        plt.scatter(objectiveSobrelotacoes, objectiveRequisitos, color='blue', label='Solutions')
+        plt.plot(pareto[:, 0], pareto[:, 1], color='red', linestyle='--', marker='o', label='Pareto Frontier')
+        plt.title('Pareto Frontier', fontsize=16)
+        plt.xlabel('Sobrelotações', fontsize=14)
+        plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'pareto_frontier.png'))
+        plt.show()
+
+        plt.figure(figsize=(12, 8))
+        plt.boxplot(objectiveSobrelotacoes)
+        plt.title('Boxplot of Sobrelotações', fontsize=16)
+        plt.ylabel('Value', fontsize=14)
+        plt.xticks([1], ['Sobrelotações'], fontsize=12)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'boxplot_sobrelotacoes.png'))
+        plt.show()
+
+        plt.figure(figsize=(12, 8))
+        plt.boxplot(objectiveRequisitos)
+        plt.title('Boxplot of Requisitos Não Cumpridos', fontsize=16)
+        plt.ylabel('Value', fontsize=14)
+        plt.xticks([1], ['Requisitos Não Cumpridos'], fontsize=12)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'boxplot_requisitos.png'))
+        plt.show()
+
+        plt.figure(figsize=(12, 8))
+        plt.hist(objectiveSobrelotacoes, bins=10, color='blue', alpha=0.7)
+        plt.title('Histogram of Sobrelotações', fontsize=16)
+        plt.xlabel('Sobrelotações', fontsize=14)
+        plt.ylabel('Frequency', fontsize=14)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'histogram_sobrelotacoes.png'))
+        plt.show()
+
+        plt.figure(figsize=(12, 8))
+        plt.hist(objectiveRequisitos, bins=10, color='blue', alpha=0.7)
+        plt.title('Histogram of Requisitos Não Cumpridos', fontsize=16)
+        plt.xlabel('Requisitos Não Cumpridos', fontsize=14)
+        plt.ylabel('Frequency', fontsize=14)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'histogram_requisitos.png'))
+        plt.show()
+
+    for i, room_index in enumerate(solutions.variables if selected_Otimization_Type == "single" else solutions[0].variables):
+        if room_index == -1:
+            schedule_df.at[i, 'Sala da aula'] = ""
+            schedule_df.at[i, 'Lotação'] = ""
+            schedule_df.at[i, 'Características reais da sala'] = ""
+        else:
+            room_info = rooms_df.iloc[room_index]
+            room_name = rooms_df.iloc[room_index]['Nome sala']
+            capacity = rooms_df.iloc[room_index]['Capacidade Normal']
+            characteristics = [column for column in rooms_df.columns[4:] if
+                               column != 'Nº características' and not pd.isna(room_info[column]) and room_info[
+                                   column] != '']
+            schedule_df.at[i, 'Sala da aula'] = room_name
+            schedule_df.at[i, 'Lotação'] = int(capacity)
+            schedule_df.at[i, 'Características reais da sala'] = ', '.join(characteristics)
+
+
+
+    # Save the assigned rooms DataFrame to a CSV file
+    schedule_df.to_csv(filename_otimization, index=False, sep=';', encoding="utf-8")
+
+
+    with open(filename_otimization, 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+    if lines:
+        lines[-1] = lines[-1].rstrip('\n')
+    with open(filename_otimization, 'w', encoding='utf-8') as file:
+        file.writelines(lines)
 
 if __name__ == '__main__':
     app.run(debug=True)

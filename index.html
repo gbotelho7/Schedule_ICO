@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <title>Gestor de Horários</title>
+  <title>Gestor e Otimizador de Horários</title>
 
   <link rel="stylesheet" type="text/css" href="styles.css">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/5.0.5/css/tabulator.min.css" rel="stylesheet">
@@ -50,17 +50,18 @@
       <br>
       <br>
       <h3> Esta ferramenta permite a análise e a comparação de horários escolares, com o intuito de perceber qual destes é o mais indicado, através da avaliação de diferentes métricas.</h3>
+      <h3> Após análise é possível fazer a otimização automática de horários escolares, no sentido de obter uma solução o mais próxima da desejada possível.</h3>
       <br>
       <br>
     </div>
     <br>
     <br>
-    <button id="show-form-button">Alterar Configurações de Leitura dos Ficheiros</button> 
+    <button id="show-form-button" style="display: none;">Alterar Configurações de Leitura dos Ficheiros</button> 
     <button class="primary" onclick="window.dialog.showModal();">?</button>
 
     <dialog id="dialog">
-      <h3>Alterar Configurações de Leitura dos Ficheiros</h3>
-      <p>Para a realização da avaliação é necessário carregar dois tipos de ficheiros diferentes:</p>
+      <h3>Carregamento de ficheiros necessários</h3>
+      <p>Para a realização da avaliação e otimização é necessário carregar dois tipos de ficheiros diferentes:</p>
       
       <ul>
           <li><strong>Ficheiro de caraterização de salas:</strong> Ficheiro csv que contém a caraterização de todas as salas existentes, para que possa ser feita uma correspondência entre estas e os horários.</li>
@@ -69,7 +70,7 @@
           <li><strong>Ficheiros de horários:</strong> Ficheiros csv que contêm as aulas todas de um determinado espaço temporal. É possível efetuar o carregamento de um ou mais ficheiros.</li>
       </ul>
       
-      <p>Para se proceder à leitura dos ficheiros, comece por verificar se as configurações de leitura de ambos os tipos de ficheiros correspondem às suas. Por exemplo, se no lugar do cabeçalho “Unidade de execução” os seus ficheiros de horário contiverem a designação “Unidade Curricular”, faça essa correspondência no local indicado. Por defeito, dentro das caixas de texto disponíveis, surgem as configurações já aplicadas.</p>
+      
       <button onclick="window.dialog.close();" aria-label="close" class="x">❌</button>
     </dialog>
       
@@ -157,7 +158,6 @@
             <li><strong>Submissão de ficheiros locais:</strong> Carregamento de ficheiros csv de horários, a partir da sua máquina local.</li>
             <li><strong>Submissão de ficheiros remotos:</strong> Carregamento de ficheiros csv de horários armazenados remotamente, através de URL.</li>
         </ul>
-
         <p>Para selecionar o modo de inserção, coloque o botão de seleção na opção pretendida.</p>
 
         <button onclick="window.dialog_Ficheiro_Horarios.close();" aria-label="close" class="x">❌</button>
@@ -182,7 +182,7 @@
       <h3> Critérios Dinâmicos</h3>
       
       <dialog id="dialog_criterios_dinamicos">
-        <h3>Métricas Pré-definidas:</h3>
+        <h3>Métricas de Avaliação Pré-definidas:</h3>
         <ul>
           <li>Sobrelotações</li>
           <li>Alunos a mais (sobrelotações)</li>
@@ -327,13 +327,116 @@
     <h4 id="h4-download">Pode fazer o Download do conteúdo da tabela acima nos seguintes formatos</h4>
     <div id="download-container"></div>
     <br>
+    
 
-    <h1>Comunicação HTML-Python</h1>
-    <button id="sendButton">Enviar Mensagem</button>
-    <p id="response"></p>
+    <div id="schedule-otimization" style="display: none;">
+      <h3>Otimização de horários <button  onclick="window.dialog_schedule_otimization.showModal();">?</button></h1> 
+      <dialog id="dialog_schedule_otimization">
+        <h3>Otimizar o horário selecionado</h3>
+      <p>Para obter uma solução de horário otimizada baseada no horário selecionado em Avaliação de critérios, é possível recorrer às seguintes alternativas:</p>
+      <ul>
+          <li><strong>Otimização multi-objetivo:</strong> Esta abordagem permite otimizar o horário levando em consideração todos os critérios disponíveis ao mesmo tempo. Isso pode ajudar a encontrar um equilíbrio entre os critérios mais comuns no problema de Timetabling. Os critérios disponíveis para a otimização multi-objetivo são:
+              <ul>
+                  <li>Sobrelotações</li>
+                  <li>Requisitos não cumpridos</li>
+              </ul>
+          </li>
+          <p>Para utilizar esta alternativa de otimização, garanta que a alternativa de otimização selecionada seja Otimização multi-objetivo .</p>
+          
+          <li><strong>Otimização de objetivo único:</strong> Esta abordagem permite focar a otimização num único critério específico. Isso pode ser útil quando um critério é particularmente importante. É possível selecionar um dos seguintes critérios para a otimização de objetivo único:
+            <br>
+              <ul>
+                  <li>Sobrelotações</li>
+                  <li>Requisitos não cumpridos</li>
+              </ul>
+          </li>
+          <p>Para iniciar a otimização de objetivo único, garanta que a alternativa de otimização selecionada seja Otimização de objetivo único.</p>
+          <p>De seguida, selecione o critério que pretende escolher para a otimização.</p>
+          <p>Para poder efetuar a otimização, é necessário indicar quais são, localmente, os nomes dos ficheiros de caracterização de salas, do horário a otimizar e o nome a atribuir ao ficheiro de horário otimizado (ficheiros terminados em .csv).</p>
+          <p>Caso o ficheiro de horário se encontre alojado remotamente, selecione, antes da otimização, "Download CSV".</p>
+          <p>Para efetuar a otimização, selecione o botão Otimizar Horário.</p>
+          <p>Se pretender efetuar a comparação entre o horário original e o correspondente horário otimizado, volte a submeter o horário original, simultaneamente com o horário otimizado. Para isso, refresque a página.</ul>
+      </ul>
+
+        <button onclick="window.dialog_schedule_otimization.close();" aria-label="close" class="x">❌</button>
+      </dialog>
+    <div id="avaliableOptimizationCriteriums"><p>Critérios de otimização disponíveis:</p>
+      <ul id="avaliableOptimizationCriteriums">
+        <li>Sobrelotações</li>
+        <li>Requisitos não cumpridos</li>
+      </ul>
+      </div>
+      <br>
+      Otimização multi-objetivo
+      <label class="switch">
+        <input type="checkbox" id="toggleSwitch3" onclick="handleOtimizationSwitch()">
+        <span class="slider"></span>
+      </label>
+      Otimização de objetivo único
+      <br>
+      <div id="multiObjectiveCriteria">
+      </div>
+      <div id="singleObjectiveCriteria" style="display: none;">
+        <label for="criteriaDropdown">Escolha um critério:</label>
+        <select id="criteriaDropdown" onchange="handleCriteriaChange(), handleOtimizationSwitch()">
+          <option value="Sobrelotações">Sobrelotações</option>
+          <option value="Requisitos não cumpridos">Requisitos não cumpridos</option>
+        </select>
+      </div>
+      <br>
+      <form id="submissionForm">
+        <h3>Insira o nome do seu ficheiro de caracterização de salas:</h3>
+        <input type="text" id="roomsCharsFileName"  placeholder="Nome do ficheiro">
+        <br>
+        <br>
+        <h3>Insira o nome do seu ficheiro de horário a otimizar:</h3>
+        <input type="text" id="scheduleFileName"  placeholder="Nome do ficheiro">
+        <br>
+        <br>
+        <h3>Insira o nome a atribuir ao ficheiro relativo à solução otimizada do horário:</h3>
+        <input type="text" id="otimizedSolutionFileName" placeholder="Nome do ficheiro">
+        <br>
+        <br>
+        <input type="submit" value="Submeter">
+      </form>
+      <!-- <h3>Insira o nome do seu ficheiro de caracterização de salas:</h3>
+      <input type="text" id="roomsCharsFileName" placeholder="Nome do ficheiro">
+      <input type="submit"  id="roomsCharsFileName">
+      <br>
+      <br>
+      <p id="response"></p>
+      <h3>Insira o nome do seu ficheiro de horário a otimizar:</h3>
+      <input type="text" id="scheduleFileName" placeholder="Nome do ficheiro">
+      <input type="submit"  id="scheduleFileName">
+      <br>
+      <br>
+      <p id="response"></p>
+      <h3>Insira o nome a atribuir ao ficheiro relativo à solução otimizada do horário:</h3>
+      <input type="text" id="otimizedSolutionFileName" placeholder="Nome do ficheiro">
+      <input type="submit"  id="otimizedSolutionFileName"> -->
+      <br>
+      <br>
+      <button id="sendButton" onclick="handleOtimizationSwitch()">Otimizar horário</button>
+      <p id="response"></p>
+    </div>
 
   
   <script>
+
+
+    roomsCharsFileName=""
+    scheduleFileName=""
+    otimizedSolutionFileName=""
+
+    document.getElementById('submissionForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      
+      roomsCharsFileName = document.getElementById('roomsCharsFileName').value;
+      scheduleFileName = document.getElementById('scheduleFileName').value;
+      otimizedSolutionFileName = document.getElementById('otimizedSolutionFileName').value;
+    });
+
+
 
     const showFormButton = document.getElementById("show-form-button");
     const parseButton = document.getElementById("parseButton");
@@ -349,6 +452,7 @@
 
     const toggleSwitch1 = document.getElementById('toggleSwitch1');
     const toggleSwitch2 = document.getElementById('toggleSwitch2');
+    const toggleSwitch3 = document.getElementById('toggleSwitch3');
 
     const dynamicCriteriums = document.getElementById('dynamicCriteriums');
     const chartContainer = document.getElementById('chart-container');
@@ -357,6 +461,7 @@
     const modifiableTabulator = document.getElementById('modifiable-tabulator');
     const heatmapContainer = document.getElementById('heatmap-container');
     const heatmapFilter = document.getElementById('heatmap-filter');
+    const scheduleOptimization = document.getElementById("schedule-otimization");
 
     const container = document.getElementById('extra-charts-container');
     const graphs = container.querySelectorAll('div');
@@ -377,7 +482,7 @@
       document.getElementById("h4-heatmap"),
       document.getElementById("h4-modifiable"),
       document.getElementById("h4-download"),
-      document.getElementById("h4-extra")
+      document.getElementById("h4-extra"),
     ];
     
   
@@ -393,6 +498,7 @@
     toggleSwitch2.addEventListener('change', function() {
       handleSwitch(criteriumFormulaInputs, criteriumTextInputs, toggleSwitch2, false);
     });
+
 
 
 
@@ -506,6 +612,7 @@
           header: true,
           complete: function (results) {
             handleParsedData(results, 0, e, hiddenDiv, true);
+            carateristicasSalas = results
             createClassRoomsDictionary(results)
             console.log(classRoomDictionary) // Dicionário com as salas e as suas caracteristicas
             dynamicCriteriums.style.display = "none"
@@ -569,6 +676,7 @@
       saveSettings()
       console.log(dynamicCriteriumsLists)
     });
+
 
   
     

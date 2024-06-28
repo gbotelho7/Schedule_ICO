@@ -52,6 +52,7 @@ function handleParsedData(results, index, e, hiddenDiv, classroomsInput) {
     if (hiddenDiv.style.display === "block" && classroomsInput) {
       hiddenDiv.style.display = "none"
     }
+    scheduleOptimization.style.display = "none"
     dynamicCriteriums.style.display = "none"
     heatmapContainer.innerHTML = ""
     chartContainer.innerHTML = ""
@@ -195,6 +196,39 @@ function handleSwitch(input1, input2, toggleSwitch, fileInput) {
 
     input2.style.display = "none"
   }
+}
+
+let selectedOtimizationType = null;
+let selectedSingleObjectiveCriterium = null;
+
+function handleOtimizationSwitch() {
+  var isChecked = document.getElementById('toggleSwitch3').checked;
+  var multiObjectiveCriteria = document.getElementById('multiObjectiveCriteria');
+  var singleObjectiveCriteria = document.getElementById('singleObjectiveCriteria');
+
+  selectedOtimizationType = null
+  selectedSingleObjectiveCriterium = null
+
+  console.log("entrou no handle otimization")
+  selectedOtimizationType = "multi";
+  multiObjectiveCriteria.style.display = 'block';
+  singleObjectiveCriteria.style.display = 'none';
+
+  if (isChecked) {
+    selectedOtimizationType = "single";
+    multiObjectiveCriteria.style.display = 'none';
+    singleObjectiveCriteria.style.display = 'block';
+    selectedSingleObjectiveCriterium = document.getElementById('criteriaDropdown').value;
+    console.log('criterio selecionado', selectedSingleObjectiveCriterium)
+  }
+  console.log(selectedOtimizationType)
+  console.log(selectedSingleObjectiveCriterium)
+}
+
+
+function handleCriteriaChange() {
+  var dropdown = document.getElementById('criteriaDropdown');
+  selectedSingleObjectiveCriterium = dropdown.value;
 }
 
 
@@ -344,21 +378,46 @@ function criteriumClassRequisites(results) {
     let askedRequisites = results.data[i][dictionary['Características da sala pedida para a aula']]
     let roomName = results.data[i][dictionary['Sala da aula']];
     if (roomName in classRoomDictionary) {
-      if (!classRoomDictionary[roomName].includes(askedRequisites)) {
-        countRequisitesNotMet++
-        results.data[i]['Requisitos não cumpridos'] = true
-        results.data[i]['Aulas Sem Sala'] = false
-      } else {
+      if (!classRoomDictionary[roomName].includes(askedRequisites) && askedRequisites != "Não necessita de sala")  {
+        if(askedRequisites === "Anfiteatro aulas"){
+          console.log('reais quando pedem anfi' + classRoomDictionary[roomName])
+        }
+        if((askedRequisites === "Sala/anfiteatro aulas" && (classRoomDictionary[roomName].includes("Sala de Aulas normal") || classRoomDictionary[roomName].includes("Anfiteatro aulas")) ) || (askedRequisites === "Lab ISTA" && classRoomDictionary[roomName].includes("Lab ISTA") )) {
+
+          results.data[i]['Requisitos não cumpridos'] = false
+          results.data[i]['Aulas Sem Sala'] = false
+        }else if (askedRequisites === "Lab ISTA" &&  classRoomDictionary[roomName].some(feature => feature.includes("Laboratório") && feature != "Laboratório de Informática")){
+          results.data[i]['Requisitos não cumpridos'] = false
+          results.data[i]['Aulas Sem Sala'] = false
+        }else if (askedRequisites === "Anfiteatro aulas" && classRoomDictionary[roomName].includes("Sala/anfiteatro aulas")) {
+          results.data[i]['Requisitos não cumpridos'] = false
+          results.data[i]['Aulas Sem Sala'] = false
+        }else{
+          countRequisitesNotMet++
+          results.data[i]['Requisitos não cumpridos'] = true
+          results.data[i]['Aulas Sem Sala'] = false
+        }
+      }
+      if(askedRequisites != "Não necessita de sala" && classRoomDictionary[roomName].includes(askedRequisites)){
         results.data[i]['Requisitos não cumpridos'] = false
         results.data[i]['Aulas Sem Sala'] = false
       }
-    } else if (roomName === "" && askedRequisites != "Não necessita de sala") { //"
+    else if(roomName === "" && askedRequisites != "Não necessita de sala"){
       countNoClassroom++
-      results.data[i]['Requisitos não cumpridos'] = true
-      results.data[i]['Aulas Sem Sala'] = true
-    } else {
       results.data[i]['Requisitos não cumpridos'] = false
-      results.data[i]['Aulas Sem Sala'] = false
+      results.data[i]['Aulas Sem Sala'] = true
+    }
+    //   } else {
+    //     results.data[i]['Requisitos não cumpridos'] = false
+    //     results.data[i]['Aulas Sem Sala'] = false
+    //   }
+    // } else if (roomName === "" && askedRequisites != "Não necessita de sala") {
+    //   countNoClassroom++
+    //   results.data[i]['Requisitos não cumpridos'] = true
+    //   results.data[i]['Aulas Sem Sala'] = true
+    // } else {
+    //   results.data[i]['Requisitos não cumpridos'] = false
+    //   results.data[i]['Aulas Sem Sala'] = false
     }
   }
   results.criteriums['Requisitos não cumpridos'] = countRequisitesNotMet
@@ -406,7 +465,7 @@ function evaluateDynamicFormulaCriterium(schedulesData, expression) {
   });
   console.log(errorCounter)
   if (errorCounter == Object.keys(schedulesData).length) {
-    alert("Ocorreu um erro e por isso não foram adicionados novos critérios por favor corriga a formula!")
+    alert("Ocorreu um erro e por isso não foram adicionados novos critérios por favor corrija a formula!")
   }
   return schedulesData
 
@@ -583,8 +642,10 @@ function createModifiableTabulator(scheduleData, elementList) {
       headerFilter: "input",
     };
 
-    // Check if 'key' is not present in the values of the 'dictionary'
+    // Check if 'key' is not present sendin the values of the 'dictionary'
     if (!dictionaryValues.includes(key)) {
+      console.log(dictionaryValues)
+      console.log(key)
       column.formatter = "tickCross";
       column.editor = ""
       column.headerFilter = ""
@@ -605,33 +666,54 @@ function createModifiableTabulator(scheduleData, elementList) {
   });
 }
 
-function sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
-  console.log(selectedScheduleData)
-  console.log(hourFormat)
-  console.log(dateFormat)
+
+
+function sendSelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteriumList, textCriteriumList){
+
   document.getElementById('sendButton').addEventListener('click', function() {
 
-    fetch('http://127.0.0.1:5000/process', {
+
+
+    console.log("nome ficheiro horario " + scheduleFileName)
+    console.log("nome ficheiro caracteristicas " + roomsCharsFileName)
+    console.log("nome ficheiro solucao " + otimizedSolutionFileName)
+
+    if(!scheduleFileName){
+      alert("Por favor, insira o nome do ficheiro do horário")
+    }
+
+    if (!roomsCharsFileName){
+      alert("Por favor, insira o nome do ficheiro das características das salas")
+      return;
+    }
+    if (!otimizedSolutionFileName) {
+      alert("Por favor, insira o nome do ficheiro a atribuir à solução e submeta antes de solicitar a otimização do horário.");
+      return;
+    }
+
+
+    fetch('http://127.0.0.1:5000/optimize', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({selectedScheduleData: selectedScheduleData, classRoomDictionary: classRoomDictionary, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList})
+        body: JSON.stringify({scheduleFileName: scheduleFileName, roomsCharsFileName: roomsCharsFileName, hourFormat: hourFormat, dateFormat: dateFormat, formulaCriteriumList: formulaCriteriumList, textCriteriumList: textCriteriumList, selectedOtimizationType: selectedOtimizationType, selectedSingleObjectiveCriterium: selectedSingleObjectiveCriterium, otimizedSolutionFileName: otimizedSolutionFileName})
     })
     .then(response => response.json())
     .then(data => {
-      const criteriums = data["criteriums"];
+      // const criteriums = data["criteriums"];
+      const status = data["status"]
   
-      responseHtml = "<p><strong>Resultados do cálculo:</strong></p>";
-      responseHtml += "<p>Critério Dinâmico formula: " + criteriums["Contagem critério dinâmico formula"] + "</p>";
-      responseHtml += "</ul>";
-      responseHtml += "<p><strong>Resultados do cálculo:</strong></p>";
-      responseHtml += "<p>Sobrelotações: " + criteriums["Sobrelotações"] + "</p>";
+      // responseHtml = "<p><strong>Resultados do cálculo:</strong></p>";
+      // // responseHtml += "<p>Critério Dinâmico formula: " + criteriums["Contagem critério dinâmico formula"] + "</p>";
+      // responseHtml += "</ul>";
+      // responseHtml += "<p><strong>Resultados do cálculo:</strong></p>";
+      // responseHtml += "<p>Sobrelotações: " + criteriums["Sobrelotações"] + "</p>";
       // responseHtml += "<p>Alunos a mais (Sobrelotações): " + criteriums["Alunos a mais (Sobrelotações)"] + "</p>";
       // //responseHtml += "<p>Sobreposições: " + criteriums["Sobreposições"] + "</p>";
       // responseHtml += "<p>Requisitos não cumpridos: " + criteriums["Requisitos não cumpridos"] + "</p>";
       // responseHtml += "<p>Aulas Sem Sala: " + criteriums["Aulas Sem Sala"] + "</p>";
-      
+      responseHtml = status;
       document.getElementById('response').innerHTML = responseHtml;
     })
     .catch(error => console.error('Error:', error));
@@ -690,13 +772,15 @@ function createTabulator(schedulesData, heatmapContainer, downloadContainer, mod
       createRequisitesChart(selectedScheduleData)
       modifiableDataTabulator = createModifiableTabulator(selectedScheduleData, elementList)
       insertDownloadButton(downloadContainer, selectedScheduleData, elementList);
-      sendSelectedScheduleDataToPython(selectedScheduleData, classRoomDictionary, hourFormat, dateFormat, formulaCriteriumList, textCriteriumList)
+      scheduleOptimization.style.display = "block"
+      sendSelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteriumList, textCriteriumList, carateristicasSalas)
     }
     else {
       heatmapContainer.innerHTML = ""
       downloadContainer.innerHTML = ""
       modifiableTabulator.innerHTML = ""
       heatmapFilter.innerHTML = ""
+      scheduleOptimization.style.display = "none"
       graphs.forEach(graph => {
         graph.innerHTML = '';
       });
