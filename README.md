@@ -14,3 +14,5 @@ docker container ls
 docker exec -it room-assignment-OS /bin/bash
 
 ou utilizando o Docker Desktop
+
+Para uma análise mais aprofundada da performance da otimização multi-objetivo, pode consultar os gráficos correspondentes ao horário otimizado.
