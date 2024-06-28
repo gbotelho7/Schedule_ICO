@@ -72,8 +72,8 @@ class RoomAssignmentProblem(PermutationProblem):
         return solution
 
 
-schedule_df = pd.read_csv('testeHorario.csv', delimiter=';')
-rooms_df = pd.read_csv('CaracterizaçãoDasSalas.csv', delimiter=';')
+schedule_df = pd.read_csv('../testeHorario.csv', delimiter=';')
+rooms_df = pd.read_csv('../CaracterizaçãoDasSalas.csv', delimiter=';')
 
 # Define the problem
 problem = RoomAssignmentProblem(rooms_df=rooms_df, schedule_df=schedule_df)
