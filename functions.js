@@ -702,7 +702,7 @@ function sendSelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteri
     .then(response => response.json())
     .then(data => {
       // const criteriums = data["criteriums"];
-      const dummy = data["dummy"]
+      const status = data["status"]
   
       // responseHtml = "<p><strong>Resultados do cálculo:</strong></p>";
       // // responseHtml += "<p>Critério Dinâmico formula: " + criteriums["Contagem critério dinâmico formula"] + "</p>";
@@ -713,7 +713,7 @@ function sendSelectedScheduleDataToPython(hourFormat, dateFormat, formulaCriteri
       // //responseHtml += "<p>Sobreposições: " + criteriums["Sobreposições"] + "</p>";
       // responseHtml += "<p>Requisitos não cumpridos: " + criteriums["Requisitos não cumpridos"] + "</p>";
       // responseHtml += "<p>Aulas Sem Sala: " + criteriums["Aulas Sem Sala"] + "</p>";
-      
+      responseHtml = status;
       document.getElementById('response').innerHTML = responseHtml;
     })
     .catch(error => console.error('Error:', error));

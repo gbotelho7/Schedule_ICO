@@ -187,6 +187,8 @@ def optimizeSchedule():
     filename_otimization = data['otimizedSolutionFileName']
     optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Type, filename_otimization,selected_SingleObjective_Criterium)
 
+    return jsonify({"status": "Otimização concluída"})
+
 def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Type, filename_otimization,selected_SingleObjective_Criterium="Null" ):
     print(schedule_File_Name)
     rooms_df = pd.read_csv(rooms_Chars_FileName, delimiter=';', encoding="utf-8")
@@ -237,7 +239,7 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
         objectiveSobrelotacoes = [solution.objectives[0] for solution in solutions]
         objectiveRequisitos = [solution.objectives[1] for solution in solutions]
     else:
-        solution = solutions[0]
+        solution = solutions
         if selected_SingleObjective_Criterium == "Sobrelotações":
             objectiveSobrelotacoes = [solution.objectives[0]]
             objectiveRequisitos = []
@@ -250,80 +252,69 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Gráfico de Dispersão
-    plt.figure(figsize=(12, 8))
-    plt.scatter(objectiveSobrelotacoes_Genetic, objectiveRequisitos_Genetic, color='blue')
-    plt.title('Multi-objective Optimization Results', fontsize=16)
-    plt.xlabel('Sobrelotações', fontsize=14)
-    plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.grid(True)
-    plt.xlim(10, 30)
-    plt.ylim(10, 30)
-    plt.savefig(os.path.join(output_dir, 'scatter_plot.png'))
-    plt.show()
+    if selected_Otimization_Type == "multi":
+        plt.figure(figsize=(12, 8))
+        plt.scatter(objectiveSobrelotacoes, objectiveRequisitos, color='blue')
+        plt.title('Multi-objective Optimization Results', fontsize=16)
+        plt.xlabel('Sobrelotações', fontsize=14)
+        plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'scatter_plot.png'))
+        plt.show()
 
-    # Obtendo a fronteira de Pareto
-    pareto = pareto_frontier(objectiveSobrelotacoes_Genetic, objectiveRequisitos_Genetic, maxX=False, maxY=True)
+        pareto = pareto_frontier(objectiveSobrelotacoes, objectiveRequisitos, maxX=False, maxY=True)
+        plt.figure(figsize=(12, 8))
+        plt.scatter(objectiveSobrelotacoes, objectiveRequisitos, color='blue', label='Solutions')
+        plt.plot(pareto[:, 0], pareto[:, 1], color='red', linestyle='--', marker='o', label='Pareto Frontier')
+        plt.title('Pareto Frontier', fontsize=16)
+        plt.xlabel('Sobrelotações', fontsize=14)
+        plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'pareto_frontier.png'))
+        plt.show()
 
-    # Gráfico de Dispersão com Fronteira de Pareto
-    plt.figure(figsize=(12, 8))
-    plt.scatter(objectiveSobrelotacoes_Genetic, objectiveRequisitos_Genetic, color='blue', label='Solutions')
-    plt.plot(pareto[:, 0], pareto[:, 1], color='red', linestyle='--', marker='o', label='Pareto Frontier')
-    plt.title('Pareto Frontier', fontsize=16)
-    plt.xlabel('Sobrelotações', fontsize=14)
-    plt.ylabel('Requisitos Não Cumpridos', fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.legend()
-    plt.grid(True)
-    plt.xlim(10, 30)
-    plt.ylim(10, 30)
-    plt.savefig(os.path.join(output_dir, 'pareto_frontier.png'))
-    plt.show()
+        plt.figure(figsize=(12, 8))
+        plt.boxplot(objectiveSobrelotacoes)
+        plt.title('Boxplot of Sobrelotações', fontsize=16)
+        plt.ylabel('Value', fontsize=14)
+        plt.xticks([1], ['Sobrelotações'], fontsize=12)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'boxplot_sobrelotacoes.png'))
+        plt.show()
 
-    # Boxplot para Objective 1
-    plt.figure(figsize=(12, 8))
-    plt.boxplot(objectiveSobrelotacoes_Genetic)
-    plt.title('Boxplot of Objective 1', fontsize=16)
-    plt.ylabel('Value', fontsize=14)
-    plt.xticks([1], ['Sobrelotações'], fontsize=12)
-    plt.grid(True)
-    plt.savefig(os.path.join(output_dir, 'boxplot_objective1.png'))
-    plt.show()
+        plt.figure(figsize=(12, 8))
+        plt.boxplot(objectiveRequisitos)
+        plt.title('Boxplot of Requisitos Não Cumpridos', fontsize=16)
+        plt.ylabel('Value', fontsize=14)
+        plt.xticks([1], ['Requisitos Não Cumpridos'], fontsize=12)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'boxplot_requisitos.png'))
+        plt.show()
 
-    # Boxplot para Objective 2
-    plt.figure(figsize=(12, 8))
-    plt.boxplot(objectiveRequisitos_Genetic)
-    plt.title('Boxplot of Objective 2', fontsize=16)
-    plt.ylabel('Value', fontsize=14)
-    plt.xticks([1], ['Requisitos Não Cumpridos'], fontsize=12)
-    plt.grid(True)
-    plt.savefig(os.path.join(output_dir, 'boxplot_objective2.png'))
-    plt.show()
+        plt.figure(figsize=(12, 8))
+        plt.hist(objectiveSobrelotacoes, bins=10, color='blue', alpha=0.7)
+        plt.title('Histogram of Sobrelotações', fontsize=16)
+        plt.xlabel('Sobrelotações', fontsize=14)
+        plt.ylabel('Frequency', fontsize=14)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'histogram_sobrelotacoes.png'))
+        plt.show()
 
-    # Histograma para Objective 1
-    plt.figure(figsize=(12, 8))
-    plt.hist(objectiveSobrelotacoes_Genetic, bins=10, color='blue', alpha=0.7)
-    plt.title('Histogram of Objective 1', fontsize=16)
-    plt.xlabel('Sobrelotações', fontsize=14)
-    plt.ylabel('Frequency', fontsize=14)
-    plt.grid(True)
-    plt.savefig(os.path.join(output_dir, 'histogram_objective1.png'))
-    plt.show()
+        plt.figure(figsize=(12, 8))
+        plt.hist(objectiveRequisitos, bins=10, color='blue', alpha=0.7)
+        plt.title('Histogram of Requisitos Não Cumpridos', fontsize=16)
+        plt.xlabel('Requisitos Não Cumpridos', fontsize=14)
+        plt.ylabel('Frequency', fontsize=14)
+        plt.grid(True)
+        plt.savefig(os.path.join(output_dir, 'histogram_requisitos.png'))
+        plt.show()
 
-    # Histograma para Objective 2
-    plt.figure(figsize=(12, 8))
-    plt.hist(objectiveRequisitos_Genetic, bins=10, color='blue', alpha=0.7)
-    plt.title('Histogram of Objective 2', fontsize=16)
-    plt.xlabel('Requisitos Não Cumpridos', fontsize=14)
-    plt.ylabel('Frequency', fontsize=14)
-    plt.grid(True)
-    plt.savefig(os.path.join(output_dir, 'histogram_objective2.png'))
-    plt.show()
-
-    for i, room_index in enumerate(solutions[0].variables if selected_Otimization_Type == "single" else solutions[0].variables):
+    for i, room_index in enumerate(solutions.variables if selected_Otimization_Type == "single" else solutions[0].variables):
         if room_index == -1:
             schedule_df.at[i, 'Sala da aula'] = ""
             schedule_df.at[i, 'Lotação'] = ""
