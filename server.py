@@ -164,7 +164,7 @@ class RoomAssignmentProblem(IntegerProblem):
 
         return solution
 
-# Identificação da fronteira de Pareto
+
 def pareto_frontier(obj1, obj2, maxX=True, maxY=True):
     sorted_list = sorted([[obj1[i], obj2[i]] for i in range(len(obj1))], reverse=maxX)
     p_front = [sorted_list[0]]
@@ -199,13 +199,12 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     problem = RoomAssignmentProblem(rooms_df, schedule_df,selected_Otimization_Type, selected_SingleObjective_Criterium)
 
 
-    # Define the crossover and mutation operators
-    # crossover_operator = CXCrossover(probability=0.8)
+
     crossover_operator = IntegerSBXCrossover(probability=0.8)
     mutation_operator = IntegerPolynomialMutation(probability=0.2)
 
     if selected_Otimization_Type == "multi":
-        # Define the NSGA-II algorithm for multi-objective optimization
+
         algorithm = NSGAII(
             problem=problem,
             population_size=10,
@@ -215,7 +214,7 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
             termination_criterion=StoppingByEvaluations(max_evaluations=200)
         )
     else:
-        # Define the Genetic Algorithm for single-objective optimization
+
         algorithm = GeneticAlgorithm(
             problem=problem,
             population_size=10,
@@ -228,14 +227,14 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
     progress_bar = ProgressBarObserver(max=200)
     algorithm.observable.register(progress_bar)
 
-    # Run the algorithm
+
     algorithm.run()
 
     # Get the results
     solutions = algorithm.get_result()
 
     if selected_Otimization_Type == "multi":
-        # Extract objectives for multi-objective optimization
+
         objectiveSobrelotacoes = [solution.objectives[0] for solution in solutions]
         objectiveRequisitos = [solution.objectives[1] for solution in solutions]
     else:
@@ -247,7 +246,6 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
             objectiveSobrelotacoes = []
             objectiveRequisitos = [solution.objectives[0]]
 
-    # Nome da pasta onde os gráficos serão salvos
     output_dir = filename_otimization + '_graphs'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -332,7 +330,7 @@ def optimize( schedule_File_Name, rooms_Chars_FileName, selected_Otimization_Typ
 
 
 
-    # Save the assigned rooms DataFrame to a CSV file
+
     schedule_df.to_csv(filename_otimization, index=False, sep=';', encoding="utf-8")
 
 
